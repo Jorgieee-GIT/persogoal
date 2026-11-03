@@ -11,11 +11,11 @@ An initial version of your **personal, local-first task and life dashboard**, dr
 - **Auto-lock**: the workspace locks on refresh, tab/browser close, switching tabs, switching apps, and when the page becomes hidden. There's also a manual lock button. No unlocked session is stored.
 - **Dashboard**: greeting, quest counters, sticky notes, current month, savings summary, monthly income and spending.
 - **Sticky notes**: create, edit, pin, change paper color, delete, and drag to rearrange on desktop.
-- **Tasks and quests**: create, edit, complete, delete; dates/times, priorities, categories, and repeating quests. A repeating quest creates its next instance on completion.
-- **Calendar**: browse months, see task counts on dates, tap a date to add a task.
+- **Tasks and quests**: create, edit, complete, delete; optional start/due dates, multi-day date ranges, nested feature checklists, priorities, categories, and repeating quests. A repeating quest creates its next instance on completion.
+- **Calendar**: browse months, see dated tasks and highlighted multi-day ranges, tap a date to add a task. Quests without dates do not appear on the calendar.
 - **Reminder notifications**: browser and in-app notifications for timed quests while the unlocked website is visible and running. Enable browser permission in Settings.
 - **Savings jars**: multiple custom goals, animated-fill-style SVG jar illustrations, deposits, withdrawals, and progress tracking.
-- **Wishlist**: create and edit products, price, notes, priority, product links, purchased state.
+- **Wishlist**: create and edit products, price, notes, priority, product links, purchased state, and image thumbnails from a direct image link or a small uploaded JPG/PNG/WebP image.
 - **Finance**: set a monthly salary and allowance; log dated expenses by category and see monthly totals and the amount left after expenses.
 - **Settings**: display name, workspace name, light/dark blue theme, change PIN, encrypted JSON backup export/import, erase local workspace.
 - **Responsive design**: desktop sidebar and mobile navigation drawer.
@@ -71,7 +71,7 @@ README.md
 
 ## Further enhancements you could add
 
-A quest XP/achievement system, wishlist images, a jar-to-wishlist savings link, finance charts, multiple finance months, a focus timer, better mobile sticky-note sorting, PWA install support, and customizable dashboard widget positions.
+A quest XP/achievement system, a jar-to-wishlist savings link, finance charts, multiple finance months, a focus timer, better mobile sticky-note sorting, PWA install support, and customizable dashboard widget positions.
 
 ## November 2026 visual update
 
@@ -96,3 +96,25 @@ You can manually move an encrypted backup between a desktop and a phone without 
 The backup is encrypted before QR generation and decoded on the receiving browser. Nothing is uploaded to a database. This action **replaces** the phone's existing local workspace and does **not** create live synchronization. Reverse the steps to transfer newer phone progress back to desktop, after backing up the desktop first.
 
 For very large workspaces, QR codes are not practical; use the existing encrypted JSON file export/import instead. Scan with a modern browser via **HTTPS** (GitHub Pages). The camera uses native browser QR detection where supported; otherwise the free, open-source jsQR library is fetched from a CDN when scanning starts. Photos are decoded within the browser. QR data remains PIN-encrypted, but a 4- or 6-digit PIN should not be considered high-security encryption against a determined offline attacker.
+
+## Quests, calendar ranges and wishlist thumbnails (v1.5)
+
+- **Optional dates:** New quests begin with blank dates. Leave both blank for project work or other ongoing checklists with no deadline. You can optionally select a start date only, a due date only, or both. A quest with both dates is shown across that inclusive range on the calendar.
+- **Project feature checklists:** Create a quest, click **Add item** under Checklist, and add steps/features. Each step can be marked complete independently on the Tasks & quests page. A "No deadline" filter makes undated projects easy to find. Existing quests do not need to be recreated.
+- **Reminders:** A time reminder requires a due date. Repeating quests also require a due date; when completed they spawn the next instance and reset the checklist statuses. As before, notifications only work while the site is active/unlocked.
+- **Wishlist images:** A product URL pointing directly to a JPG/PNG/WebP/GIF/AVIF image can be used as the thumbnail automatically. Regular shopping-product pages (such as a merchant product detail page) cannot generally have their Open Graph product thumbnail fetched by a static browser app because of cross-origin restrictions. For those, add a separate **Thumbnail image URL** or **Upload thumbnail** from your device. Uploaded images are downscaled and stored inside the encrypted local data.
+- **Image limitations:** Merchants may block third-party image loading; if so, the gift illustration is shown. Embedded image uploads consume local browser storage and can make QR transfers too large. Continue to use encrypted JSON backup/import if the QR backup says it exceeds the QR limit. An external image URL may make a request to that image host when the wishlist is opened.
+- **Data compatibility:** No schema version or LocalStorage key migration is required. Old data is read with missing start dates, checklists and image fields treated as empty. Preserve your PIN and make a JSON backup before significant updates.
+
+## Quest layout, connected calendar ranges and subscriptions (v1.6)
+
+- **Quest modal:** The Add/Edit Quest editor is wider and grouped into clearly spaced fields, date controls and a separate feature checklist. It scrolls within the viewport on small devices.
+- **Checklist layout:** A quest's heading and its feature checklist now share one connected, rounded border. Checklist rows have roomier click targets and centered checkboxes.
+- **Calendar spans:** Multi-day quests draw connected bars between adjacent dates within a calendar week. The bar ends cleanly at the week boundary and continues on the next calendar row. Undated quests remain off the calendar.
+- **Subscriptions:** A new **Subscriptions** tab and **Quick add → Subscription** let you save the subscription name, price (PHP), monthly/yearly billing cycle, next billing date, days of cancellation notice, reminder lead time, status, and optional notes. Edit, pause, cancel, or delete entries directly. Next billing dates advance automatically for monthly/yearly cycles. The panel shows each next renewal date and a calculated cancellation date, plus estimated monthly and yearly commitments. A year-billed plan contributes one twelfth of its cost to the monthly estimate.
+- **Subscriptions are projections, not transactions:** A billing date does not automatically deduct money, mark an expense as paid, cancel a service, or contact a merchant. Enter actual expenses separately in **My finances** if you want to account for a charge; this avoids accidental double-counting. Subscription reminders only fire while the site is open, visible and unlocked. The browser's notification permission is also needed for system notifications.
+- **Progress preserved:** Existing encrypted LocalStorage key (`little-blue-hq.v1.encrypted`), vault version, PIN, saved quests, wishlist images, and QR/JSON backup format remain intact. Older workspaces gain an empty `subscriptions` array automatically on PIN unlock. Subscription entries are included in subsequent encrypted QR and JSON backups; the QR frame limit still applies.
+
+### Updating from v1.5
+
+Extract the changed-files ZIP into your existing PersoGoal project root and overwrite **`app.js`**, **`styles.css`**, **`README.md`**, and **`CHANGELOG.md`**. Make a JSON backup before deploying significant changes, then push to GitHub Pages and hard-refresh the site. No external packages or backend are needed.

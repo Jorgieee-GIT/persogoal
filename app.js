@@ -2,15 +2,23 @@
 "use strict";
 
 const STORAGE_KEY = "little-blue-hq.v1.encrypted";
+const THEME_PREF_KEY = "persogoal.theme.preference";
+function lastThemePreference() {
+    try { return localStorage.getItem(THEME_PREF_KEY) === "pink" ? "pink" : "blue"; }
+    catch { return "blue"; }
+}
+function rememberThemePreference(theme) {
+    try { localStorage.setItem(THEME_PREF_KEY, theme); } catch {}
+}
 const PBKDF2_ITERATIONS = 350000;
 const NAV = [
     ["overview", "home", "Dashboard"],
     ["notes", "sticky", "Sticky notes"],
-    ["quests", "check", "Tasks & quests"],
-    ["calendar", "calendar", "Calendar"],
+    ["calendar", "calendar", "Calendar & quests"],
     ["savings", "jar", "Savings jars"],
     ["wishlist", "heart", "Wishlist"],
     ["finances", "wallet", "My finances"],
+    ["subscriptions", "repeat", "Subscriptions"],
     ["settings", "settings", "Settings"]
 ];
 const PATHS = {
@@ -50,9 +58,15 @@ const PATHS = {
     logout: '<path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5M14 7l5 5-5 5M8 12h11"/>',
     edit: '<path d="M4 20l5-.8L20 8a2 2 0 0 0-4-4L5 15l-1 5z"/>',
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    credit: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>',
     money: '<rect x="2" y="5" width="20" height="14" rx="3"/><circle cx="12" cy="12" r="3"/><path d="M5 9h1m12 6h1"/>',
     search: '<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>',
-    scan: '<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3M5 12h14"/>'
+    scan: '<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3M5 12h14"/>',
+    eye: '<path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="m3 3 18 18M10.6 5.1A11 11 0 0 1 12 5c6.2 0 10 7 10 7a16 16 0 0 1-3 3.5M6 6.8C3.4 8.7 2 12 2 12s3.8 7 10 7c1.7 0 3.2-.5 4.5-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    plane: '<path d="M22 2 9.5 14.5M22 2l-7 20-4.3-8.7L2 9z"/>',
+    ticket: '<path d="M3 7h18v4a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4V7ZM12 7v2m0 3v2m0 3v1"/>',
+    book: '<path d="M12 7c-3-3-7-3-10-2v15c3-1 7-1 10 2 3-3 7-3 10-2V5c-3-1-7-1-10 2ZM12 7v15"/>'
 };
 
 function icon(name, size = 19, cls = "") {
@@ -80,6 +94,31 @@ function readableDate(value) {
 function pesos(value) {
     return new Intl.NumberFormat("en-PH", {style:"currency", currency:"PHP", maximumFractionDigits:2}).format(Number(value) || 0);
 }
+function privacyMoney(value) {
+    return moneyVisible ? pesos(value) : "₱ ••••••";
+}
+function privacyButton() {
+    return `<button type="button" class="money-visibility-button" data-action="toggle-money" title="${moneyVisible ? "Hide" : "Show"} amounts" aria-label="${moneyVisible ? "Hide" : "Show"} money amounts" aria-pressed="${moneyVisible}">${icon(moneyVisible ? "eye" : "eyeOff", 18)}</button>`;
+}
+function wishCategory(w) {
+    return ["Item", "Travel", "Experience", "Learning", "Lifestyle", "Other"].includes(w.type) ? w.type : "Item";
+}
+function wishIcon(type) {
+    return ({Item:"gift",Travel:"plane",Experience:"ticket",Learning:"book",Lifestyle:"home",Other:"heart"})[type] || "heart";
+}
+function wishPrice(w) {
+    const mode = w.priceMode || (number(w.price) ? "exact" : "none");
+    if (mode === "none") return "No budget yet";
+    if (mode === "range") {
+        const min = number(w.price);
+        const max = number(w.priceMax);
+        if (min && max) return `${privacyMoney(min)} – ${privacyMoney(max)}`;
+        if (min) return `From ${privacyMoney(min)}`;
+        if (max) return `Up to ${privacyMoney(max)}`;
+        return "No budget yet";
+    }
+    return number(w.price) ? privacyMoney(w.price) : "No budget yet";
+}
 function number(value) {
     return Math.max(0, Math.round((Number(value) || 0) * 100) / 100);
 }
@@ -95,6 +134,46 @@ function safeHref(href) {
         const u = new URL(href);
         return ["http:","https:"].includes(u.protocol) ? u.href : "";
     } catch { return ""; }
+}
+function directImageLink(href) {
+    const url = safeHref(href);
+    return url && /\.(?:jpg|jpeg|png|webp|gif|avif)(?:[?#]|$)/i.test(url) ? url : "";
+}
+function safeImageSrc(value) {
+    const image = String(value || "");
+    if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(image) && image.length < 160000) return image;
+    return safeHref(image);
+}
+async function shrinkWishlistImage(file) {
+    if (!/^image\/(?:jpeg|png|webp)$/.test(file.type)) throw Error("Use a JPG, PNG, or WebP thumbnail.");
+    if (file.size > 5 * 1024 * 1024) throw Error("Thumbnail files must be under 5 MB.");
+    const image = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    try {
+        await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(Error("The selected image could not be opened."));
+            image.src = blobUrl;
+        });
+        const factor = Math.min(190 / image.naturalWidth, 135 / image.naturalHeight, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * factor));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * factor));
+        const context = canvas.getContext("2d");
+        if (!context) throw Error("Your browser cannot resize thumbnails.");
+        context.fillStyle = "#e5f3fc";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        let output = "";
+        for (const quality of [0.50, 0.38, 0.28]) {
+            output = canvas.toDataURL("image/jpeg", quality);
+            if (output.length <= 8500) break;
+        }
+        if (output.length > 8500) throw Error("That image is too detailed for a local thumbnail. Try a simpler image or an image URL.");
+        return output;
+    } finally {
+        URL.revokeObjectURL(blobUrl);
+    }
 }
 function bytesToB64(bytes) {
     let s = "";
@@ -127,10 +206,10 @@ function validRecord(r) {
 function seedData() {
     return {
         version:1,
-        profile:{name:"You", workspace:"PersoGoal", theme:"light"},
+        profile:{name:"You", workspace:"PersoGoal", theme:"blue"},
         notes:[],
         tasks:[],
-        jars:[], wishlist:[],
+        jars:[], wishlist:[], subscriptions:[],
         finance:{salary:0, allowance:0, expenses:[]}
     };
 }
@@ -142,9 +221,11 @@ let menuOpen = false;
 let pinLengthChoice = 6;
 let monthCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let taskFilter = "all";
+let selectedCalendarDate = "";
 let saveChain = Promise.resolve();
 let shownReminders = new Set();
 let saveErrorShown = false;
+let moneyVisible = false;
 
 function readVault() {
     try {
@@ -196,6 +277,11 @@ async function unlockWorkspace(pin) {
     if (!result || result.version !== 1 || !Array.isArray(result.tasks) || !Array.isArray(result.notes)) throw Error("Invalid workspace");
     activeKey = key;
     data = result;
+    // Backward-compatible optional collection. Do not change the encrypted vault key or version.
+    if (!Array.isArray(data.subscriptions)) {
+        data.subscriptions = [];
+        writeVault(structuredClone(data), activeKey);
+    }
     // Preserve existing encrypted data while upgrading the original default name.
     // Custom workspace names are left untouched.
     if (data.profile && (!data.profile.workspace || data.profile.workspace === "Little Blue HQ")) {
@@ -218,6 +304,7 @@ function lockWorkspace() {
     activeKey = null;
     page = "overview";
     shownReminders.clear();
+    moneyVisible = false;
     menuOpen = false;
     document.getElementById("modal-root").innerHTML = "";
     render();
@@ -231,14 +318,26 @@ function toast(message, kind="info") {
     setTimeout(() => { el.classList.add("toast-leaving"); setTimeout(() => el.remove(),260); }, 3900);
 }
 function taskDue(t) {
-    if (!t.dueDate) return "Anytime";
-    if (t.dueDate === localDate()) return t.dueTime ? `Today, ${t.dueTime}` : "Today";
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    if (t.dueDate === localDate(yesterday)) return "Yesterday";
-    return readableDate(t.dueDate) + (t.dueTime ? ` at ${t.dueTime}` : "");
+    const start = t.startDate || "";
+    const end = t.dueDate || "";
+    if (!start && !end) return "No deadline";
+    if (start && end && start !== end) return `${readableDate(start)} - ${readableDate(end)}` + (t.dueTime ? ` at ${t.dueTime}` : "");
+    if (start && !end) return `Starts ${readableDate(start)}`;
+    if (end === localDate()) return t.dueTime ? `Today at ${t.dueTime}` : "Today";
+    return readableDate(end || start) + (t.dueTime ? ` at ${t.dueTime}` : "");
+}
+function taskOccursOn(t, day) {
+    if (t.startDate && t.dueDate) return t.startDate <= day && day <= t.dueDate;
+    return (t.startDate || t.dueDate || "") === day;
+}
+function taskInMonth(t, yearMonth) {
+    const first = `${yearMonth}-01`;
+    const last = localDate(new Date(Number(yearMonth.slice(0,4)), Number(yearMonth.slice(5,7)), 0));
+    if (t.startDate && t.dueDate) return t.startDate <= last && t.dueDate >= first;
+    return (t.startDate || t.dueDate || "").startsWith(yearMonth);
 }
 function sortedTasks(items) {
-    return [...items].sort((a,b) => Number(a.done) - Number(b.done) || (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || (b.createdAt || 0) - (a.createdAt || 0));
+    return [...items].sort((a,b) => Number(a.done) - Number(b.done) || (a.dueDate || a.startDate || "9999").localeCompare(b.dueDate || b.startDate || "9999") || (b.createdAt || 0) - (a.createdAt || 0));
 }
 function monthExpenses() {
     const prefix = localDate().slice(0,7);
@@ -257,7 +356,7 @@ function navMarkup() {
     return `<aside class="sidebar ${menuOpen ? "sidebar--open" : ""}">
         <div class="brand"><div class="brand-mark">${icon("sticky",26)}</div><div><div class="brand-name">${esc(data.profile.workspace || "PersoGoal")}</div></div></div>
         
-        <nav class="side-nav" aria-label="Main navigation">${NAV.map(([p,i,label],index) => `<button type="button" class="nav-link ${page===p?"active":""} ${index===7?"nav-link--settings":""}" data-page="${p}">${icon(i,19)}<span>${esc(label)}</span>${p==="quests" && data.tasks.filter(t=>!t.done).length ? `<span class="nav-counter">${data.tasks.filter(t=>!t.done).length}</span>`:""}</button>`).join("")}</nav>
+        <nav class="side-nav" aria-label="Main navigation">${NAV.map(([p,i,label],index) => `<button type="button" class="nav-link ${page===p?"active":""} ${p==="settings"?"nav-link--settings":""}" data-page="${p}">${icon(i,19)}<span>${esc(label)}</span>${p==="calendar" && data.tasks.filter(t=>!t.done).length ? `<span class="nav-counter">${data.tasks.filter(t=>!t.done).length}</span>`:""}</button>`).join("")}</nav>
         <div class="sidebar-bottom"><button class="sidebar-lock" type="button" data-action="lock">${icon("lock",17)} Lock workspace</button></div>
     </aside>`;
 }
@@ -266,18 +365,21 @@ function render() {
     document.title = `PersoGoal | ${data ? labelPage() : "Private workspace"}`;
     if (!vault || vault.invalid || !validRecord(vault)) {
         root.innerHTML = vault && vault.invalid ? `<div class="fatal"><h1>Could not read saved workspace</h1><p>Browser storage may be damaged. Try restoring a backup rather than clearing your data.</p></div>` : renderGate("setup");
-        document.body.dataset.theme = "light";
+        document.body.dataset.theme = lastThemePreference();
     } else if (!data) {
         root.innerHTML = renderGate("unlock");
-        document.body.dataset.theme = "light";
+        document.body.dataset.theme = lastThemePreference();
     } else {
-        document.body.dataset.theme = data.profile.theme === "dark" ? "dark" : "light";
+        document.body.dataset.theme = data.profile.theme === "pink" ? "pink" : "blue";
+        rememberThemePreference(document.body.dataset.theme);
         root.innerHTML = `<div class="app-shell">${navMarkup()}${menuOpen ? '<button class="sidebar-backdrop" data-action="close-menu" aria-label="Close navigation"></button>' : ""}<main class="main-area">
             <header class="topbar"><div class="topbar-left"><button class="icon-button menu-button" data-action="menu" aria-label="Open menu">${icon("menu",23)}</button><span class="breadcrumb">MY SPACE <span>/</span> <strong>${esc(labelPage())}</strong></span></div><div class="topbar-actions"><span class="today-chip">${icon("calendar",16)} ${new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span><button class="icon-button" data-action="lock" title="Lock now" aria-label="Lock now">${icon("lock",19)}</button><button class="icon-button qr-toolbar" type="button" data-action="qr-transfer" title="QR backup transfer" aria-label="QR backup transfer">${icon("scan",21)}</button><button class="btn btn-primary btn-small" data-action="quick-add">${icon("plus",18)}<span>Quick add</span></button></div></header>
             <div class="main-content">${renderPage()}</div>
             <footer class="site-footer">© ${new Date().getFullYear()} HORHE PERSONAL. <span>All rights reserved.</span></footer>
         </main></div>`;
     }
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.content = document.body.dataset.theme === "pink" ? "#fcf1f7" : "#edf5fc";
 }
 function renderGate(mode) {
     const setup = mode === "setup";
@@ -294,11 +396,12 @@ function renderGate(mode) {
 function renderPage() {
     switch(page) {
         case "notes": return renderNotesPage();
-        case "quests": return renderQuestsPage();
+        case "quests":
         case "calendar": return renderCalendarPage();
         case "savings": return renderSavingsPage();
         case "wishlist": return renderWishlistPage();
         case "finances": return renderFinancesPage();
+        case "subscriptions": return renderSubscriptionsPage();
         case "settings": return renderSettingsPage();
         default: return renderOverview();
     }
@@ -311,20 +414,20 @@ function renderOverview() {
     <div class="stat-grid">
         ${statCard("TO-DO QUESTS",open.length,"check","sky")}
         ${statCard("UPCOMING",upcoming,"calendar","ice")}
-        ${statCard("SAVED SO FAR",pesos(totalSaved()),"jar","cloud")}
+        ${statCard("SAVED SO FAR",privacyMoney(totalSaved()),"jar","cloud",true)}
         ${statCard("WISHLIST",data.wishlist.filter(w=>!w.purchased).length,"heart","slate")}
     </div>
     <div class="overview-grid"><div class="overview-left">
         <section class="panel notes-panel"><div class="panel-heading"><div><h2>${icon("sticky",23)} Your sticky notes</h2></div><button class="text-action" data-page="notes">All notes ${icon("arrow",16)}</button></div><div class="notes-grid notes-grid--mini">${renderNotes(3)}<button class="add-note-tile" data-action="new-note">${icon("plus",23)}<span>New note</span></button></div></section>
-        <section class="panel"><div class="panel-heading"><div><h2>${icon("check",23)} Quest board</h2></div><button class="text-action" data-page="quests">See all ${icon("arrow",16)}</button></div><div class="quest-list">${sortedTasks(data.tasks).slice(0,4).map(renderTask).join("") || emptyState("check","No quests yet")}</div><button class="subtle-button" data-action="new-task">${icon("plus",17)} Add a quest</button></section>
+        <section class="panel"><div class="panel-heading"><div><h2>${icon("check",23)} Quest board</h2></div><button class="text-action" data-page="calendar">See all ${icon("arrow",16)}</button></div><div class="quest-list">${sortedTasks(data.tasks).slice(0,4).map(renderTask).join("") || emptyState("check","No quests yet")}</div><button class="subtle-button" data-action="new-task">${icon("plus",17)} Add a quest</button></section>
     </div><div class="overview-right">
         <section class="panel calendar-panel"><div class="panel-heading"><div><h2>${icon("calendar",23)} Calendar</h2></div><button class="text-action" data-page="calendar">Open ${icon("arrow",16)}</button></div>${renderCalendarGrid(true)}</section>
-        <section class="panel jar-snapshot"><div class="panel-heading"><div><h2>${icon("jar",23)} Savings jar</h2></div><button class="text-action" data-page="savings">View ${icon("arrow",16)}</button></div><div class="jar-snapshot-body">${jarSvg(data.jars[0] || {id:"empty",balance:0,target:100},102)}<div><span class="muted-small">TOTAL SAVINGS</span><strong class="snapshot-money">${pesos(totalSaved())}</strong><button class="text-action" data-action="new-jar">${icon("plus",15)} New jar</button></div></div></section>
-        <section class="panel mini-money"><div class="panel-heading"><div><h2>${icon("wallet",23)} Money snapshot</h2></div><button class="text-action" data-page="finances">Details ${icon("arrow",16)}</button></div><div class="money-lines"><div><span>Salary + allowance</span><strong>${pesos(totalIncome())}</strong></div><div><span>Expenses this month</span><strong>${pesos(monthExpenses())}</strong></div><div class="money-remaining"><span>After expenses</span><strong>${pesos(totalIncome()-monthExpenses())}</strong></div></div></section>
+        <section class="panel jar-snapshot"><div class="panel-heading"><div><h2>${icon("jar",23)} Savings jar</h2></div><button class="text-action" data-page="savings">View ${icon("arrow",16)}</button></div><div class="jar-snapshot-body">${jarSvg(data.jars[0] || {id:"empty",balance:0,target:100},102)}<div><span class="muted-small">TOTAL SAVINGS</span><div class="private-money-heading"><strong class="snapshot-money">${privacyMoney(totalSaved())}</strong>${privacyButton()}</div><button class="text-action" data-action="new-jar">${icon("plus",15)} New jar</button></div></div></section>
+        <section class="panel mini-money"><div class="panel-heading"><div><h2>${icon("wallet",23)} Money snapshot</h2></div><button class="text-action" data-page="finances">Details ${icon("arrow",16)}</button></div><div class="money-lines"><div><span>Salary + allowance</span><strong>${privacyMoney(totalIncome())}</strong></div><div><span>Expenses this month</span><strong>${privacyMoney(monthExpenses())}</strong></div><div class="money-remaining"><span>After expenses</span><strong>${privacyMoney(totalIncome()-monthExpenses())}</strong></div></div></section>
     </div></div>`;
 }
-function statCard(label, value, symbol, tone) {
-    return `<div class="stat-card stat-card--${tone} grain"><div class="stat-top"><span>${label}</span><div class="stat-icon">${icon(symbol,24)}</div></div><strong title="${esc(value)}">${esc(value)}</strong></div>`;
+function statCard(label, value, symbol, tone, sensitive = false) {
+    return `<div class="stat-card stat-card--${tone} grain"><div class="stat-top"><span>${label}</span><div class="stat-actions">${sensitive ? privacyButton() : ""}<div class="stat-icon">${icon(symbol,24)}</div></div></div><strong>${esc(value)}</strong></div>`;
 }
 function renderNotes(max) {
     const sorted = [...data.notes].sort((a,b) => Number(b.pinned)-Number(a.pinned) || (a.sortOrder ?? -(a.createdAt||0))-(b.sortOrder ?? -(b.createdAt||0)));
@@ -335,19 +438,44 @@ function renderNotesPage() {
         
         <div class="notes-grid notes-grid--full">${renderNotes()}<button class="add-note-tile" data-action="new-note">${icon("plus",28)}<span>Write something new</span></button></div>`;
 }
-function renderTask(t) {
+function renderTask(t, showChecklist = false) {
     const overdue = t.dueDate && t.dueDate < localDate() && !t.done;
-    return `<div class="quest-row ${t.done?"quest-row--done":""}"><button type="button" class="quest-check ${t.done?"checked":""}" data-action="toggle-task" data-id="${t.id}" aria-label="${t.done ? "Mark incomplete" : "Complete quest"}">${t.done?icon("check",17):""}</button><button class="quest-details" data-action="edit-task" data-id="${t.id}"><strong>${esc(t.title)}</strong><span>${icon("calendar",14)} ${esc(taskDue(t))}${t.recurrence && t.recurrence!=="none"?` · ${icon("repeat",13)} ${esc(t.recurrence)}`:""}</span></button><span class="priority priority--${esc(t.priority||"low")}">${esc(t.priority||"low")}</span><button class="icon-button item-edit" data-action="edit-task" data-id="${t.id}" aria-label="Edit quest">${icon("edit",17)}</button>${overdue?'<span class="sr-only">Overdue</span>':""}</div>`;
+    const subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
+    const complete = subtasks.filter(item => item.done).length;
+    const checklist = showChecklist && subtasks.length ? `<div class="quest-subtasks" aria-label="Checklist for ${esc(t.title)}">${subtasks.map(item => `<button type="button" class="quest-subtask ${item.done ? "is-done" : ""}" data-action="toggle-subtask" data-id="${esc(t.id)}" data-subtask="${esc(item.id)}" aria-label="${item.done ? "Uncheck" : "Check"} ${esc(item.text)}"><span class="subtask-box">${item.done ? icon("check", 13) : ""}</span><span class="subtask-text">${esc(item.text)}</span></button>`).join("")}</div>` : "";
+    return `<div class="quest-entry"><div class="quest-row ${t.done ? "quest-row--done" : ""}"><button type="button" class="quest-check ${t.done ? "checked" : ""}" data-action="toggle-task" data-id="${esc(t.id)}" aria-label="${t.done ? "Mark incomplete" : "Complete quest"}">${t.done ? icon("check",17) : ""}</button><button class="quest-details" data-action="edit-task" data-id="${esc(t.id)}"><strong>${esc(t.title)}</strong><span>${icon(t.dueDate || t.startDate ? "calendar" : "check",14)} ${esc(taskDue(t))}${t.recurrence && t.recurrence !== "none" ? ` · ${icon("repeat",13)} ${esc(t.recurrence)}` : ""}${subtasks.length ? ` · ${complete}/${subtasks.length} checklist` : ""}</span></button><span class="priority priority--${esc(t.priority || "low")}">${esc(t.priority || "low")}</span><button class="icon-button item-edit" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Edit quest">${icon("edit",17)}</button>${overdue ? '<span class="sr-only">Overdue</span>' : ""}</div>${checklist}</div>`;
 }
-function renderQuestsPage() {
+// The quest board lives beside the calendar. Quests have one data source,
+// so undated project checklists and dated events appear in the same panel.
+function plannerTasks() {
     let tasks = sortedTasks(data.tasks);
-    if (taskFilter === "today") tasks = tasks.filter(t=>t.dueDate===localDate());
-    else if (taskFilter === "upcoming") tasks = tasks.filter(t=>!t.done && t.dueDate && t.dueDate>=localDate());
-    else if (taskFilter === "done") tasks = tasks.filter(t=>t.done);
-    const complete = data.tasks.filter(t=>t.done).length;
-    return `${sectionTitle("Tasks & quests",buttonAction("Add quest","new-task"))}
-    <div class="quest-intro grain"><div><h2>${complete} of ${data.tasks.length} quests finished</h2><div class="progress-track"><div class="progress-fill" style="width:${percent(complete,data.tasks.length)}%"></div></div></div><div class="quest-intro-badge">${icon("check",69)}</div></div>
-    <section class="panel"><div class="filter-row">${[["all","All quests"],["today","Today"],["upcoming","Upcoming"],["done","Completed"]].map(([k,l])=>`<button data-action="filter-tasks" data-value="${k}" class="filter-pill ${taskFilter===k?"active":""}">${l}</button>`).join("")}</div><div class="quest-list quest-list--page">${tasks.length?tasks.map(renderTask).join(""):emptyState("check","No quests found")}</div></section>`;
+    if (taskFilter === "date" && selectedCalendarDate) {
+        tasks = tasks.filter(task => taskOccursOn(task, selectedCalendarDate));
+    } else if (taskFilter === "today") {
+        tasks = tasks.filter(task => taskOccursOn(task, localDate()));
+    } else if (taskFilter === "upcoming") {
+        tasks = tasks.filter(task => !task.done && task.dueDate && task.dueDate >= localDate());
+    } else if (taskFilter === "no-date") {
+        tasks = tasks.filter(task => !task.startDate && !task.dueDate);
+    } else if (taskFilter === "done") {
+        tasks = tasks.filter(task => task.done);
+    }
+    return tasks;
+}
+function renderPlannerQuestPanel() {
+    const tasks = plannerTasks();
+    const pending = data.tasks.filter(t => !t.done).length;
+    const filters = [["all", "All"], ["today", "Today"], ["upcoming", "Upcoming"], ["no-date", "No deadline"], ["done", "Done"]];
+    if (selectedCalendarDate) filters.splice(1, 0, ["date", readableDate(selectedCalendarDate)]);
+    const buttonDate = taskFilter === "date" ? selectedCalendarDate : "";
+    return `<section class="panel planner-quests" aria-label="Tasks and quests">
+        <div class="panel-heading planner-quests-header">
+            <div><h2>${icon("check", 22)} Tasks & quests</h2><span class="planner-quest-counter">${pending} open</span></div>
+            <button type="button" class="btn btn-primary btn-small" data-action="planner-add" data-date="${esc(buttonDate)}">${icon("plus", 16)} Add</button>
+        </div>
+        <div class="filter-row planner-filter-row" aria-label="Filter tasks">${filters.map(([key, label]) => `<button type="button" data-action="filter-tasks" data-value="${key}" class="filter-pill ${taskFilter === key ? "active" : ""}" aria-pressed="${taskFilter === key}">${esc(label)}</button>`).join("")}</div>
+        <div class="quest-list planner-quest-list">${tasks.length ? tasks.map(t => renderTask(t, true)).join("") : emptyState("check", "No quests found")}</div>
+    </section>`;
 }
 function calendarCells(date) {
     const year = date.getFullYear(), month = date.getMonth();
@@ -358,18 +486,114 @@ function calendarCells(date) {
         return d>0 && d<=count ? localDate(new Date(year,month,d)) : "";
     });
 }
+// Position a continuous calendar bar at the exact center of a day column.
+// Unlike seven individually painted bars, this uses one line for each quest/week.
+// The calculation includes both the grid column width and the responsive gap.
+function calendarColumnCenter(column) {
+    const percent = ((column + 0.5) * 100 / 7).toFixed(6);
+    const gapFactor = (column - 3) / 7;
+    const sign = gapFactor < 0 ? "-" : "+";
+    return `calc(${percent}% ${sign} ${Math.abs(gapFactor).toFixed(6)} * var(--calendar-cell-gap))`;
+}
+// Range colors are deliberately different shades of blue; the first finishing
+// overlapping quest is always allocated the top lane.
+const CALENDAR_RANGE_COLORS = ["#397eae", "#8ab9da", "#5b9ebd", "#b1cee2", "#316b93", "#79a6c7"];
+function calendarWeekRanges(weekDates, rangedTasks) {
+    const visible = weekDates.filter(Boolean);
+    if (!visible.length) return [];
+    const start = visible[0];
+    const end = visible[visible.length - 1];
+    // Sorting by completion date makes the soonest-finishing overlapping
+    // ranges occupy the upper lanes, regardless of the order quests were added.
+    const ranges = rangedTasks
+        .filter(task => task.startDate <= end && task.dueDate >= start)
+        .map(task => ({
+            task,
+            first: weekDates.findIndex(day => day && task.startDate <= day && day <= task.dueDate),
+            last: weekDates.findLastIndex(day => day && task.startDate <= day && day <= task.dueDate)
+        }))
+        .filter(range => range.first >= 0 && range.last >= 0)
+        .sort((a, b) => a.task.dueDate.localeCompare(b.task.dueDate)
+            || a.task.startDate.localeCompare(b.task.startDate)
+            || String(a.task.id).localeCompare(String(b.task.id)));
+
+    const lanes = [];
+    return ranges.map(range => {
+        // Nonoverlapping ranges may reuse a lane. Sharing a date always uses
+        // separate lanes, so parallel quests do not paint over each other.
+        let lane = lanes.findIndex(lastOccupiedDate => lastOccupiedDate < range.first);
+        if (lane === -1) {
+            lane = lanes.length;
+            lanes.push(range.last);
+        } else {
+            lanes[lane] = range.last;
+        }
+        return {...range, lane};
+    });
+}
 function renderCalendarGrid(mini=false) {
-    const monthText = monthCursor.toLocaleDateString("en-PH",{month:"long",year:"numeric"});
-    const tasksByDate = new Map();
-    for (const t of data.tasks) if (t.dueDate) tasksByDate.set(t.dueDate,(tasksByDate.get(t.dueDate)||0)+1);
-    return `<div class="calendar-controls"><strong>${esc(monthText)}</strong><div><button class="icon-button" data-action="calendar-prev" aria-label="Previous month">${icon("left",17)}</button><button class="icon-button" data-action="calendar-next" aria-label="Next month">${icon("right",17)}</button></div></div>
-        <div class="calendar-grid ${mini?"calendar-grid--mini":""}">${["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=>`<span class="calendar-weekday">${d}</span>`).join("")}${calendarCells(monthCursor).map(date=>date?`<button class="calendar-day ${date===localDate()?"is-today":""} ${tasksByDate.has(date)?"has-events":""}" data-action="calendar-date" data-date="${date}" title="${tasksByDate.get(date)||0} quest(s)"><span>${parseLocalDate(date).getDate()}</span>${tasksByDate.has(date)?`<i class="cal-dot"></i>${!mini?`<small>${tasksByDate.get(date)} quest${tasksByDate.get(date)===1?"":"s"}</small>`:""}`:""}</button>`:`<span class="calendar-day calendar-day--blank"></span>`).join("")}</div>`;
+    const monthText = monthCursor.toLocaleDateString("en-PH", {month:"long",year:"numeric"});
+    const cells = calendarCells(monthCursor);
+    const visibleTasks = data.tasks.filter(task => task.startDate || task.dueDate);
+    const rangedTasks = visibleTasks.filter(task => task.startDate && task.dueDate && task.startDate < task.dueDate);
+    // Keep each quest's shade consistent as its line continues into new weeks,
+    // even if its vertical lane changes when another quest finishes.
+    const rangeColors = new Map([...rangedTasks]
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate)
+            || a.startDate.localeCompare(b.startDate)
+            || String(a.id).localeCompare(String(b.id)))
+        .map((task, index) => [task.id, CALENDAR_RANGE_COLORS[index % CALENDAR_RANGE_COLORS.length]]));
+    const weeks = [];
+
+    for (let offset = 0; offset < cells.length; offset += 7) {
+        const weekDates = cells.slice(offset, offset + 7);
+        const visible = weekDates.filter(Boolean);
+        if (!visible.length) continue;
+        const weekStart = visible[0];
+        const weekEnd = visible[visible.length - 1];
+        const weekRanges = calendarWeekRanges(weekDates, rangedTasks);
+        const laneCount = weekRanges.reduce((count, range) => Math.max(count, range.lane + 1), 0);
+
+        const dates = weekDates.map(date => {
+            if (!date) return `<span class="calendar-day calendar-day--blank" aria-hidden="true"></span>`;
+            const occurring = visibleTasks.filter(task => taskOccursOn(task, date));
+            const hasRange = occurring.some(task => task.startDate && task.dueDate && task.startDate < task.dueDate);
+            // The continuous bar already represents multi-day quests. Only
+            // single-day quests receive a dot / count, avoiding "1 quest"
+            // underneath every date of the same multi-day project.
+            const singleDay = occurring.filter(task => !(task.startDate && task.dueDate && task.startDate < task.dueDate));
+            const names = occurring.map(task => task.title).join(", ");
+            const dateClass = `calendar-day ${date === localDate() ? "is-today" : ""} ${!mini && page === "calendar" && date === selectedCalendarDate ? "is-selected" : ""} ${occurring.length ? "has-events" : ""} ${hasRange ? "is-in-range" : ""}`;
+            // A single-day item sharing a ranged date gets a small corner count
+            // instead of a dot/text placed underneath the range lines.
+            const singleMarker = !singleDay.length ? "" : hasRange
+                ? `<span class="cal-single-badge" aria-label="${singleDay.length} single-day quest${singleDay.length === 1 ? "" : "s"}">+${singleDay.length}</span>`
+                : `<i class="cal-dot"></i>${!mini ? `<small>${singleDay.length} quest${singleDay.length === 1 ? "" : "s"}</small>` : ""}`;
+            return `<button class="${dateClass}" data-action="calendar-date" data-date="${date}" title="${esc(names || "New quest")}"><span class="calendar-date-number">${parseLocalDate(date).getDate()}</span>${singleMarker}</button>`;
+        }).join("");
+
+        const spans = weekRanges.map(range => {
+            // Start and end at date-card centers. A span continuing into the
+            // next / previous calendar row reaches the row edge instead.
+            const {task, first, last, lane} = range;
+            const continuesFromPreviousWeek = first === 0 && task.startDate < weekStart;
+            const continuesIntoNextWeek = last === 6 && task.dueDate > weekEnd;
+            const left = continuesFromPreviousWeek ? "0px" : calendarColumnCenter(first);
+            const right = continuesIntoNextWeek ? "0px" : calendarColumnCenter(6 - last);
+            const color = rangeColors.get(task.id) || CALENDAR_RANGE_COLORS[lane % CALENDAR_RANGE_COLORS.length];
+            return `<span class="cal-week-span" style="--cal-range-left:${left};--cal-range-right:${right};--cal-range-lane:${lane};--cal-range-color:${color}" title="${esc(task.title)}" aria-hidden="true"></span>`;
+        }).join("");
+
+        weeks.push(`<div class="calendar-week" style="--cal-row-lanes:${laneCount}">${dates}${spans}</div>`);
+    }
+    return `<div class="calendar-controls"><strong>${esc(monthText)}</strong><div><button class="icon-button" data-action="calendar-prev" aria-label="Previous month">${icon("left",17)}</button><button class="icon-button" data-action="calendar-next" aria-label="Next month">${icon("right",17)}</button></div></div><div class="calendar-grid ${mini ? "calendar-grid--mini" : ""}">${["Su","Mo","Tu","We","Th","Fr","Sa"].map(day => `<span class="calendar-weekday">${day}</span>`).join("")}${weeks.join("")}</div>`;
 }
 function renderCalendarPage() {
-    const month = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth()+1).padStart(2,"0")}`;
-    const items=sortedTasks(data.tasks).filter(t=>t.dueDate?.startsWith(month));
-    return `${sectionTitle("Calendar",buttonAction("New event / quest","new-task"))}
-        <div class="calendar-page-grid"><section class="panel calendar-large">${renderCalendarGrid()}</section><section class="panel"><div class="panel-heading"><div><h2>Upcoming notes</h2></div></div><div class="quest-list">${items.length?items.map(renderTask).join(""):emptyState("calendar","No events this month")}</div></section></div>`;
+    return `${sectionTitle("Calendar & quests")}
+        <div class="calendar-page-grid planner-page-grid">
+            <section class="panel calendar-large planner-calendar" aria-label="Monthly calendar">${renderCalendarGrid()}</section>
+            ${renderPlannerQuestPanel()}
+        </div>`;
 }
 function jarSvg(j, width=150) {
     const ratio = percent(j.balance,j.target);
@@ -389,39 +613,146 @@ function jarSvg(j, width=150) {
 }
 function renderSavingsPage() {
     return `${sectionTitle("Savings jars",buttonAction("Create savings jar","new-jar"))}
-        <div class="savings-summary grain">${icon("jar",32)}<div><span>YOUR TOTAL SAVINGS</span><strong>${pesos(totalSaved())}</strong></div></div>
-        <div class="jar-grid">${data.jars.map(j=>`<article class="jar-card grain"><div class="jar-card-top"><button class="icon-button" data-action="edit-jar" data-id="${j.id}" aria-label="Edit jar">${icon("edit",17)}</button></div>${jarSvg(j)}<h3>${esc(j.name)}</h3><strong class="jar-balance">${pesos(j.balance)}</strong><p>of ${pesos(j.target)}</p><div class="progress-track"><div class="progress-fill" style="width:${percent(j.balance,j.target)}%"></div></div><span class="progress-caption">${percent(j.balance,j.target)}% of goal</span><div class="jar-buttons"><button class="btn btn-primary" data-action="jar-deposit" data-id="${j.id}">${icon("plus",16)} Deposit</button><button class="btn btn-outline" data-action="jar-withdraw" data-id="${j.id}">Withdraw</button></div></article>`).join("")}
+        <div class="savings-summary grain">${icon("jar",32)}<div><span>YOUR TOTAL SAVINGS</span><strong>${privacyMoney(totalSaved())}</strong></div>${privacyButton()}</div>
+        <div class="jar-grid">${data.jars.map(j=>`<article class="jar-card grain"><div class="jar-card-top"><button class="icon-button" data-action="edit-jar" data-id="${j.id}" aria-label="Edit jar">${icon("edit",17)}</button></div>${jarSvg(j)}<h3>${esc(j.name)}</h3><strong class="jar-balance">${privacyMoney(j.balance)}</strong><p>of ${privacyMoney(j.target)}</p><div class="progress-track"><div class="progress-fill" style="width:${percent(j.balance,j.target)}%"></div></div><span class="progress-caption">${percent(j.balance,j.target)}% of goal</span><div class="jar-buttons"><button class="btn btn-primary" data-action="jar-deposit" data-id="${j.id}">${icon("plus",16)} Deposit</button><button class="btn btn-outline" data-action="jar-withdraw" data-id="${j.id}">Withdraw</button></div></article>`).join("")}
         <button type="button" class="empty-add-card" data-action="new-jar">${icon("plus",34)}<strong>Create a savings jar</strong></button></div>`;
 }
 function renderWishlistPage() {
-    return `${sectionTitle("Wishlist",buttonAction("Add a wish","new-wish"))}
-        <div class="wishlist-grid">${data.wishlist.map(w=>`<article class="wish-card grain ${w.purchased?"wish-card--bought":""}"><div class="wish-illustration">${icon("gift",70)}<span class="wish-tag">${esc(w.priority || "Someday")}</span></div><div class="wish-body"><div class="wish-title-row"><h3>${esc(w.name)}</h3><button class="icon-button" data-action="edit-wish" data-id="${w.id}" aria-label="Edit wish">${icon("edit",17)}</button></div><div class="wish-price">${pesos(w.price)}</div>${w.note ? `<p class="wish-user-note">${esc(shortText(w.note,130))}</p>` : ""}<div class="wish-actions"><button class="mini-outline" data-action="toggle-wish" data-id="${w.id}">${icon("check",15)} ${w.purchased?"Mark unbought":"Mark purchased"}</button>${safeHref(w.url)?`<a class="wish-link" target="_blank" rel="noopener noreferrer" href="${esc(safeHref(w.url))}" aria-label="Open product link">${icon("link",16)}</a>`:""}</div></div></article>`).join("")}
-        <button type="button" class="empty-add-card" data-action="new-wish">${icon("heart",34)}<strong>Add a wishlist item</strong></button></div>`;
+    return `${sectionTitle("Wishlist",`<div class="heading-actions">${privacyButton()}${buttonAction("Add a wish","new-wish")}</div>`)}
+        <div class="wishlist-grid">${data.wishlist.map(w => {
+            const type = wishCategory(w);
+            const image = safeImageSrc(w.imageData || w.imageUrl || directImageLink(w.url));
+            return `<article class="wish-card grain ${w.purchased ? "wish-card--bought" : ""}">
+                <div class="wish-illustration">${icon(wishIcon(type),65)}${image ? `<img class="wish-thumb" src="${esc(image)}" alt="${esc(w.name)} thumbnail" loading="lazy"/>` : ""}<span class="wish-tag">${esc(type)}</span></div>
+                <div class="wish-body"><div class="wish-title-row"><h3>${esc(w.name)}</h3><button class="icon-button" data-action="edit-wish" data-id="${esc(w.id)}" aria-label="Edit wish">${icon("edit",17)}</button></div>
+                <div class="wish-price">${esc(wishPrice(w))}</div>
+                <span class="wish-priority">${esc(w.priority || "Someday")}</span>
+                ${w.note ? `<p class="wish-user-note">${esc(shortText(w.note,130))}</p>` : ""}
+                <div class="wish-actions"><button class="mini-outline" data-action="toggle-wish" data-id="${esc(w.id)}">${icon("check",15)} ${w.purchased ? "Mark incomplete" : "Mark achieved"}</button>${safeHref(w.url) ? `<a class="wish-link" target="_blank" rel="noopener noreferrer" href="${esc(safeHref(w.url))}" aria-label="Open wish link">${icon("link",16)}</a>` : ""}</div>
+                </div></article>`;
+        }).join("")}
+        <button type="button" class="empty-add-card" data-action="new-wish">${icon("heart",34)}<strong>Add a wish</strong></button></div>`;
 }
 function renderFinancesPage() {
     const total = totalIncome(), spent = monthExpenses();
     const recent = [...data.finance.expenses].sort((a,b)=>b.date.localeCompare(a.date));
     const spentPercentage = percent(spent,total);
     return `${sectionTitle("My finances",buttonAction("Add expense","new-expense"))}
-        <div class="finance-top"><div class="finance-hero grain"><div class="eyebrow">MONTHLY INCOME ESTIMATE</div><strong>${pesos(total)}</strong><p>Salary ${pesos(data.finance.salary)} <span class="finance-plus">+</span> Allowance ${pesos(data.finance.allowance)}</p><button class="btn btn-dark" data-action="edit-income">${icon("edit",16)} Edit salary & allowance</button><div class="finance-hero-decoration">${icon("wallet",130)}</div></div>
-        <div class="finance-metrics"><div class="finance-metric"><span>Spent this month</span><strong>${pesos(spent)}</strong></div><div class="finance-metric"><span>After expenses</span><strong>${pesos(total-spent)}</strong></div></div></div>
-        <div class="finance-lower"><section class="panel"><div class="panel-heading"><div><h2>${icon("wallet",22)} Expense history</h2></div><button class="text-action" data-action="new-expense">${icon("plus",16)} Add</button></div><div class="expense-list">${recent.length?recent.map(e=>`<div class="expense-row"><div class="expense-icon">${icon("money",19)}</div><div class="expense-detail"><strong>${esc(e.name)}</strong><span>${esc(e.category || "Other")} · ${readableDate(e.date)}</span></div><strong class="expense-amount">−${pesos(e.amount)}</strong><button class="icon-button" data-action="edit-expense" data-id="${e.id}" aria-label="Edit expense">${icon("edit",17)}</button></div>`).join(""):emptyState("wallet","No expenses yet")}</div></section>
+        <div class="finance-top"><div class="finance-hero grain"><div class="finance-privacy-bar"><div class="eyebrow">MONTHLY INCOME ESTIMATE</div>${privacyButton()}</div><strong>${privacyMoney(total)}</strong><p>Salary ${privacyMoney(data.finance.salary)} <span class="finance-plus">+</span> Allowance ${privacyMoney(data.finance.allowance)}</p><button class="btn btn-dark" data-action="edit-income">${icon("edit",16)} Edit salary & allowance</button><div class="finance-hero-decoration">${icon("wallet",130)}</div></div>
+        <div class="finance-metrics"><div class="finance-metric"><span>Spent this month</span><strong>${privacyMoney(spent)}</strong></div><div class="finance-metric"><span>After expenses</span><strong>${privacyMoney(total-spent)}</strong></div></div></div>
+        <div class="finance-lower"><section class="panel"><div class="panel-heading"><div><h2>${icon("wallet",22)} Expense history</h2></div><button class="text-action" data-action="new-expense">${icon("plus",16)} Add</button></div><div class="expense-list">${recent.length?recent.map(e=>`<div class="expense-row"><div class="expense-icon">${icon("money",19)}</div><div class="expense-detail"><strong>${esc(e.name)}</strong><span>${esc(e.category || "Other")} · ${readableDate(e.date)}</span></div><strong class="expense-amount">−${privacyMoney(e.amount)}</strong><button class="icon-button" data-action="edit-expense" data-id="${e.id}" aria-label="Edit expense">${icon("edit",17)}</button></div>`).join(""):emptyState("wallet","No expenses yet")}</div></section>
         <section class="panel"><div class="panel-heading"><div><h2>Monthly overview</h2></div></div><div class="spending-illustration">${icon("coin",75)}<span>${spentPercentage}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${spentPercentage}%"></div></div></section></div>`;
+}
+function dateWithDayOffset(date, offset) {
+    const parsed = parseLocalDate(date);
+    if (!parsed) return "";
+    parsed.setDate(parsed.getDate() + offset);
+    return localDate(parsed);
+}
+function subscriptionNextDate(subscription, fromDate = localDate()) {
+    const anchor = parseLocalDate(subscription.nextDate);
+    const from = parseLocalDate(fromDate);
+    if (!anchor || !from) return "";
+    const interval = subscription.cycle === "yearly" ? 12 : 1;
+    const monthsBetween = (from.getFullYear() - anchor.getFullYear()) * 12 + from.getMonth() - anchor.getMonth();
+    let count = Math.max(0, Math.floor(monthsBetween / interval));
+    // Use the original day-of-month for every cycle (31st -> February 28th -> March 31st).
+    for (let i = 0; i < 3; i++, count++) {
+        const months = anchor.getFullYear() * 12 + anchor.getMonth() + count * interval;
+        const year = Math.floor(months / 12);
+        const month = months - year * 12;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const candidate = localDate(new Date(year, month, Math.min(anchor.getDate(), lastDay)));
+        if (candidate >= fromDate) return candidate;
+    }
+    return "";
+}
+function subscriptionMonthlyCost(subscription) {
+    if (subscription.status !== "active") return 0;
+    return number(subscription.amount) / (subscription.cycle === "yearly" ? 12 : 1);
+}
+function renderSubscriptionsPage() {
+    const subscriptions = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+    const active = subscriptions.filter(s => s.status === "active");
+    const monthly = active.reduce((sum, s) => sum + subscriptionMonthlyCost(s), 0);
+    const yearly = active.reduce((sum, s) => sum + (s.cycle === "yearly" ? number(s.amount) : number(s.amount) * 12), 0);
+    const ordered = [...subscriptions].sort((a, b) => Number(a.status !== "active") - Number(b.status !== "active") || (subscriptionNextDate(a) || "9999").localeCompare(subscriptionNextDate(b) || "9999"));
+    return `${sectionTitle("Subscriptions", `<div class="heading-actions">${privacyButton()}${buttonAction("Add subscription", "new-subscription")}</div>`)}
+        <div class="subscriptions-summary">
+            <div class="subscription-metric grain"><div class="metric-icon">${icon("repeat", 23)}</div><span>MONTHLY ESTIMATE</span><strong>${privacyMoney(monthly)}</strong></div>
+            <div class="subscription-metric grain"><div class="metric-icon">${icon("wallet", 23)}</div><span>YEARLY ESTIMATE</span><strong>${privacyMoney(yearly)}</strong></div>
+            <div class="subscription-metric grain"><div class="metric-icon">${icon("check", 23)}</div><span>ACTIVE SUBSCRIPTIONS</span><strong>${active.length}</strong></div>
+        </div>
+        <div class="subscriptions-grid">${ordered.map(s => {
+            const due = subscriptionNextDate(s);
+            const cancelDate = due ? dateWithDayOffset(due, -Math.max(0, Number(s.cancelDays) || 0)) : "";
+            const daysRemaining = due ? Math.round((parseLocalDate(due) - parseLocalDate(localDate())) / 86400000) : 0;
+            const alert = s.status === "active" && cancelDate && cancelDate <= localDate();
+            return `<article class="subscription-card ${alert ? "subscription-card--attention" : ""}">
+                <div class="subscription-card-top"><div class="subscription-avatar">${icon("credit", 24)}</div><div class="subscription-title"><h2>${esc(s.name)}</h2><span class="subscription-status ${s.status === "active" ? "is-active" : ""}">${esc(s.status || "active")}</span></div><button type="button" class="icon-button" data-action="edit-subscription" data-id="${esc(s.id)}" aria-label="Edit ${esc(s.name)}">${icon("edit", 19)}</button></div>
+                <strong class="subscription-amount">${privacyMoney(s.amount)}<small> / ${s.cycle === "yearly" ? "year" : "month"}</small></strong>
+                <div class="subscription-facts"><div><span>Next renewal</span><strong>${due ? readableDate(due) : "Not set"}</strong></div><div><span>Cancel by</span><strong>${cancelDate ? readableDate(cancelDate) : "Not set"}</strong></div></div>
+                ${s.status === "active" && due ? `<div class="subscription-next ${alert ? "subscription-next--attention" : ""}">${icon("bell", 15)} ${daysRemaining === 0 ? "Renews today" : `Renews in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`}</div>` : ""}
+                ${s.note ? `<p class="subscription-note">${esc(s.note)}</p>` : ""}
+            </article>`;
+        }).join("") || `<div class="subscription-empty">${emptyState("repeat", "No subscriptions yet")}<button type="button" class="btn btn-primary" data-action="new-subscription">${icon("plus", 17)} Add subscription</button></div>`}</div>`;
 }
 function renderSettingsPage() {
     return `${sectionTitle("Settings")}
         <div class="settings-grid"><section class="panel settings-card"><div class="settings-icon">${icon("edit",24)}</div><h2>Personal details</h2><form data-form="profile"><label class="field-label">Your display name</label><input class="input" name="name" value="${esc(data.profile.name)}" maxlength="34" required/><label class="field-label">Workspace name</label><input class="input" name="workspace" value="${esc(data.profile.workspace)}" maxlength="38" required/><button class="btn btn-primary" type="submit">Save details</button></form></section>
-        <section class="panel settings-card"><div class="settings-icon">${icon("sun",24)}</div><h2>Appearance</h2><div class="theme-options"><button type="button" class="theme-option ${data.profile.theme!=="dark"?"selected":""}" data-action="theme" data-value="light"><span class="theme-swatch theme-swatch--light"></span>Cloud blue</button><button type="button" class="theme-option ${data.profile.theme==="dark"?"selected":""}" data-action="theme" data-value="dark"><span class="theme-swatch theme-swatch--dark"></span>Midnight blue</button></div></section>
+        <section class="panel settings-card"><div class="settings-icon">${icon("sun",24)}</div><h2>Appearance</h2><div class="theme-options"><button type="button" class="theme-option ${data.profile.theme!=="pink"?"selected":""}" data-action="theme" data-value="blue"><span class="theme-swatch theme-swatch--blue"></span>Blue mode</button><button type="button" class="theme-option ${data.profile.theme==="pink"?"selected":""}" data-action="theme" data-value="pink"><span class="theme-swatch theme-swatch--pink"></span>Pink mode</button></div></section>
         <section class="panel settings-card"><div class="settings-icon">${icon("lock",24)}</div><h2>Privacy and PIN</h2><div class="settings-actions"><button class="btn btn-outline" data-action="change-pin">${icon("lock",17)} Change PIN</button><button class="btn btn-outline" data-action="lock">${icon("logout",17)} Lock right now</button></div></section>
         <section class="panel settings-card"><div class="settings-icon">${icon("bell",24)}</div><h2>Reminders</h2><button class="btn btn-outline" data-action="enable-alerts">${icon("bell",17)} ${typeof Notification !== "undefined" && Notification.permission === "granted" ? "Notifications allowed" : "Enable browser notifications"}</button></section>
         <section class="panel settings-card"><div class="settings-icon">${icon("download",24)}</div><h2>Encrypted backups</h2><div class="settings-actions"><button class="btn btn-primary" data-action="export">${icon("download",16)} Export backup</button><button class="btn btn-outline" data-action="import">${icon("upload",16)} Import backup</button></div></section>
-        <section class="panel settings-card"><div class="settings-icon">${icon("info",24)}</div><h2>Storage information</h2><div class="storage-counts"><span>${data.notes.length} notes</span><span>${data.tasks.length} quests</span><span>${data.jars.length} jars</span><span>${data.wishlist.length} wishes</span></div><button class="text-danger" data-action="wipe">Erase this workspace</button></section></div>`;
+        <section class="panel settings-card"><div class="settings-icon">${icon("info",24)}</div><h2>Storage information</h2><div class="storage-counts"><span>${data.notes.length} notes</span><span>${data.tasks.length} quests</span><span>${data.jars.length} jars</span><span>${data.wishlist.length} wishes</span><span>${(data.subscriptions || []).length} subscriptions</span></div><button class="text-danger" data-action="wipe">Erase this workspace</button></section></div>`;
 }
 function emptyState(symbol, title) {
     return `<div class="empty-state">${icon(symbol,34)}<strong>${esc(title)}</strong></div>`;
 }
 function field(label, name, value="", type="text", extra="") {
+    if (type === "date") {
+        const required = /\brequired\b/.test(extra);
+        return `<label class="field-label" for="f-${name}">${esc(label)}</label><div class="date-field" data-picker-month="${esc((value || localDate()).slice(0,7))}"><input id="f-${name}" type="hidden" name="${esc(name)}" value="${esc(value)}" data-date-required="${required}"/><button type="button" class="input date-trigger" data-action="date-toggle" aria-haspopup="dialog" aria-expanded="false">${icon("calendar",17)}<span>${value ? esc(readableDate(value)) : "Select date"}</span>${icon("right",15)}</button><div class="date-popover" hidden></div></div>`;
+    }
     return `<label class="field-label" for="f-${name}">${esc(label)}</label><input class="input" id="f-${name}" name="${name}" type="${type}" value="${esc(value)}" ${extra}/>`;
+}
+function closeDatePickers(except = null) {
+    document.querySelectorAll(".date-field").forEach(field => {
+        if (field === except) return;
+        const pop = field.querySelector(".date-popover");
+        if (pop) pop.hidden = true;
+        field.querySelector(".date-trigger")?.setAttribute("aria-expanded","false");
+    });
+}
+function paintDatePicker(wrapper) {
+    const hidden = wrapper.querySelector('input[type="hidden"]');
+    const month = /^\d{4}-\d{2}$/.test(wrapper.dataset.pickerMonth || "") ? `${wrapper.dataset.pickerMonth}-01` : localDate().slice(0,7) + "-01";
+    const first = parseLocalDate(month);
+    const year = first.getFullYear();
+    const m = first.getMonth();
+    const offset = first.getDay();
+    const days = new Date(year, m + 1, 0).getDate();
+    const weekday = ["Su","Mo","Tu","We","Th","Fr","Sa"].map(day => `<span class="date-weekday">${day}</span>`).join("");
+    const slots = Array.from({length:offset}, () => '<span class="date-blank"></span>');
+    for (let day = 1; day <= days; day++) {
+        const date = localDate(new Date(year,m,day));
+        const selected = date === hidden.value;
+        const today = date === localDate();
+        slots.push(`<button type="button" class="date-day ${selected ? "is-selected" : ""} ${today ? "is-today" : ""}" data-action="date-select" data-value="${date}" aria-label="${esc(readableDate(date))}" aria-pressed="${selected}">${day}</button>`);
+    }
+    const optional = hidden.dataset.dateRequired !== "true";
+    const pop = wrapper.querySelector(".date-popover");
+    pop.innerHTML = `<div class="date-picker-heading"><button type="button" class="date-nav" data-action="date-previous" aria-label="Previous month">${icon("left",17)}</button><strong>${first.toLocaleDateString("en-PH",{month:"long",year:"numeric"})}</strong><button type="button" class="date-nav" data-action="date-next" aria-label="Next month">${icon("right",17)}</button></div><div class="date-picker-grid">${weekday}${slots.join("")}</div><div class="date-picker-footer"><button type="button" data-action="date-today">Today</button>${optional ? '<button type="button" data-action="date-clear">Clear date</button>' : ""}</div>`;
+    pop.classList.toggle("date-popover--up", wrapper.getBoundingClientRect().bottom > window.innerHeight - 355);
+}
+function selectCustomDate(wrapper,value) {
+    const hidden=wrapper.querySelector('input[type="hidden"]');
+    if (!hidden) return;
+    hidden.value=value;
+    wrapper.querySelector('.date-trigger span').textContent=value ? readableDate(value) : "Select date";
+    if (value) wrapper.dataset.pickerMonth=value.slice(0,7);
+    hidden.dispatchEvent(new Event("change",{bubbles:true}));
+    closeDatePickers();
 }
 function selectField(label,name,selected,options) {
     return `<label class="field-label" for="f-${name}">${esc(label)}</label><select class="input" id="f-${name}" name="${name}">${options.map(([value,title])=>`<option value="${esc(value)}" ${selected===value?"selected":""}>${esc(title)}</option>`).join("")}</select>`;
@@ -437,6 +768,10 @@ function closeModal() { stopQrTransfer(); document.getElementById("modal-root").
 function modalFooter(type, identity, label="Save changes", danger=false) {
     return `<div class="modal-bottom">${danger && identity ? `<button type="button" class="text-danger" data-action="delete-${type}" data-id="${identity}">${icon("trash",16)} Delete</button>`:"<span></span>"}<div class="modal-bottom-right"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-primary">${label}</button></div></div>`;
 }
+function checklistEditorRow(item = {}) {
+    const itemId = item.id || id();
+    return `<div class="checklist-edit-row" data-subtask-id="${esc(itemId)}"><label class="checklist-state" title="Completed"><input type="checkbox" class="checklist-completed" ${item.done ? "checked" : ""} aria-label="Checklist item completed" /></label><input class="input checklist-text" type="text" maxlength="110" placeholder="Feature or step" value="${esc(item.text || "")}" aria-label="Checklist item" /><button class="icon-button checklist-remove" type="button" data-action="remove-checklist-item" aria-label="Remove checklist item">${icon("close",17)}</button></div>`;
+}
 function openEditor(type, identity="", presetDate="") {
     if (!data) return;
     if (type === "note") {
@@ -444,7 +779,16 @@ function openEditor(type, identity="", presetDate="") {
         modalMarkup(n?"Edit sticky note":"A fresh sticky note", "", `<form data-form="note" data-id="${n?.id||""}">${textArea("Your note","text",n?.text||"",1500)}${selectField("Paper color","color",n?.color||"sky",[["sky","Sky blue"],["paper","Cloud white"],["slate","Blue gray"],["night","Midnight blue"]])}<label class="checkbox-line"><input type="checkbox" name="pinned" ${n?.pinned?"checked":""}/> Keep this note pinned</label>${modalFooter("note",n?.id,n?"Save note":"Add note",true)}</form>`);
     } else if (type === "task") {
         const t = data.tasks.find(x=>x.id===identity);
-        modalMarkup(t?"Edit your quest":"Start a little quest", "", `<form data-form="task" data-id="${t?.id||""}">${field("Quest title","title",t?.title||"","text","maxlength='90' required")}${textArea("Extra details (optional)","description",t?.description||"",600)}<div class="form-two">${field("Due date","dueDate",t?.dueDate||presetDate,"date")}${field("Reminder time","dueTime",t?.dueTime||"","time")}</div><div class="form-two">${selectField("Priority","priority",t?.priority||"medium",[["low","Low"],["medium","Medium"],["high","High"]])}${selectField("Category","category",t?.category||"Personal",[["Personal","Personal"],["Work","Work"],["Study","Study"],["Errands","Errands"],["Other","Other"]])}</div>${selectField("Repeat","recurrence",t?.recurrence||"none",[["none","Does not repeat"],["daily","Every day"],["weekly","Every week"],["monthly","Every month"]])}${modalFooter("task",t?.id,t?"Save quest":"Add quest",true)}</form>`);
+        const existingItems = Array.isArray(t?.subtasks) ? t.subtasks : [];
+        modalMarkup(t ? "Edit quest" : "New quest", "", `<form class="task-form" data-form="task" data-id="${t?.id || ""}">
+            <div class="task-form-block">${field("Quest title", "title", t?.title || "", "text", "maxlength='90' required")}</div>
+            <div class="task-form-block">${textArea("Extra details (optional)", "description", t?.description || "", 600)}</div>
+            <div class="task-form-grid"><div class="task-form-block">${field("Start date (optional)", "startDate", t?.startDate || "", "date")}</div><div class="task-form-block">${field("Due date (optional)", "dueDate", t?.dueDate || presetDate, "date")}</div></div>
+            <div class="task-form-block">${field("Reminder time (requires due date)", "dueTime", t?.dueTime || "", "time", !t?.dueDate && !presetDate ? "disabled" : "")}</div>
+            <div class="task-form-grid"><div class="task-form-block">${selectField("Priority", "priority", t?.priority || "medium", [["low", "Low"], ["medium", "Medium"], ["high", "High"]])}</div><div class="task-form-block">${selectField("Category", "category", t?.category || "Personal", [["Personal", "Personal"], ["Work", "Work"], ["Study", "Study"], ["Errands", "Errands"], ["Other", "Other"]])}</div></div>
+            <div class="task-form-block">${selectField("Repeat", "recurrence", t?.recurrence || "none", [["none", "Does not repeat"], ["daily", "Every day"], ["weekly", "Every week"], ["monthly", "Every month"]])}</div>
+            <section class="task-checklist-section"><div class="checklist-editor-heading"><label class="field-label">Feature checklist</label><button class="text-action" type="button" data-action="add-checklist-item">${icon("plus", 15)} Add item</button></div><div class="checklist-editor" id="checklist-editor">${existingItems.map(checklistEditorRow).join("")}</div></section>
+            ${modalFooter("task", t?.id, t ? "Save quest" : "Add quest", true)}</form>`, "modal--quest");
     } else if (type === "jar") {
         const j = data.jars.find(x=>x.id===identity);
         modalMarkup(j?"Edit savings jar":"Create a savings jar", "", `<form data-form="jar" data-id="${j?.id||""}">${field("What are you saving for?","name",j?.name||"","text","maxlength='70' required")}${field("Savings target (PHP)","target",j?.target||"","number","min='1' max='999999999' step='0.01' required")}${modalFooter("jar",j?.id,j?"Save goal":"Create jar",true)}</form>`);
@@ -452,10 +796,35 @@ function openEditor(type, identity="", presetDate="") {
         const j = data.jars.find(x=>x.id===identity);
         if (!j) return;
         const mode = presetDate === "withdraw" ? "withdraw" : "deposit";
-        modalMarkup(mode==="deposit"?"Add to your jar":"Take from your jar", `Current balance: ${pesos(j.balance)}`, `<form data-form="movement" data-id="${j.id}" data-mode="${mode}">${field("Amount (PHP)","amount","","number",`min='0.01' max='${mode==="withdraw"?j.balance:999999999}' step='0.01' required`)}${modalFooter("", "", mode==="deposit"?"Deposit savings":"Withdraw savings")}</form>`);
+        modalMarkup(mode==="deposit"?"Add to your jar":"Take from your jar", `Current balance: ${privacyMoney(j.balance)}`, `<form data-form="movement" data-id="${j.id}" data-mode="${mode}">${field("Amount (PHP)","amount","","number",`min='0.01' max='${mode==="withdraw"?j.balance:999999999}' step='0.01' required`)}${modalFooter("", "", mode==="deposit"?"Deposit savings":"Withdraw savings")}</form>`);
     } else if (type === "wish") {
         const w = data.wishlist.find(x=>x.id===identity);
-        modalMarkup(w?"Edit wishlist item":"Add a little wish", "", `<form data-form="wish" data-id="${w?.id||""}">${field("What would you like?","name",w?.name||"","text","maxlength='90' required")}${field("Price (PHP)","price",w?.price||"","number","min='0' step='0.01' max='999999999'")}${field("Product URL (optional)","url",w?.url||"","url","maxlength='600' placeholder='https://...'")}${selectField("Priority","priority",w?.priority||"Someday",[["Someday","Someday"],["Soon","Soon"],["High priority","High priority"]])}${textArea("Notes (optional)","note",w?.note||"",300)}${modalFooter("wish",w?.id,w?"Save wish":"Add wish",true)}</form>`);
+        const priceMode = ["none","exact","range"].includes(w?.priceMode) ? w.priceMode : (number(w?.price) ? "exact" : "none");
+        modalMarkup(w ? "Edit wish" : "Add a wish", "", `<form data-form="wish" data-id="${w?.id || ""}">
+            ${field("What is your wish?","name",w?.name || "","text","maxlength='90' required")}
+            ${selectField("Wish category","type",wishCategory(w || {}),[["Item","Item / gadget"],["Travel","Travel / destination"],["Experience","Experience / event"],["Learning","Learning / education"],["Lifestyle","Lifestyle / home"],["Other","Other goal"]])}
+            ${selectField("Budget type","priceMode",priceMode,[["none","No budget yet"],["exact","Exact amount"],["range","Estimated range"]])}
+            <div class="wish-price-fields" data-price-fields>
+                <div data-wish-exact ${priceMode!=="exact" ? "hidden" : ""}>${field("Amount (PHP)","price",priceMode==="exact" ? (w?.price ?? "") : "","number","min='0' step='0.01' max='999999999'")}</div>
+                <div data-wish-range ${priceMode!=="range" ? "hidden" : ""} class="wish-price-range"><div>${field("From (PHP)","priceMin",priceMode==="range" ? (w?.price ?? "") : "","number","min='0' step='0.01' max='999999999'")}</div><div>${field("To (PHP)","priceMax",w?.priceMax ?? "","number","min='0' step='0.01' max='999999999'")}</div></div>
+            </div>
+            ${field("Related link (optional)","url",w?.url || "","url","maxlength='600' placeholder='https://...'")}
+            ${field("Thumbnail image URL (optional)","imageUrl",w?.imageUrl || "","url","maxlength='1500' placeholder='https://.../photo.jpg'")}
+            <label class="field-label" for="f-imageFile">Upload picture (optional)</label><input id="f-imageFile" class="input image-file-input" type="file" name="imageFile" accept="image/jpeg,image/png,image/webp" />
+            ${w?.imageData || w?.imageUrl ? `<label class="checkbox-line"><input type="checkbox" name="removeImage" /> Remove current picture</label>` : ""}
+            ${selectField("Priority","priority",w?.priority || "Someday",[["Someday","Someday"],["Soon","Soon"],["High priority","High priority"]])}
+            ${textArea("Notes (optional)","note",w?.note || "",300)}
+            ${modalFooter("wish",w?.id,w ? "Save wish" : "Add wish",true)}</form>`,"modal--wish");
+    } else if (type === "subscription") {
+        const sub = (data.subscriptions || []).find(x => x.id === identity);
+        modalMarkup(sub ? "Edit subscription" : "Add subscription", "", `<form class="subscription-form" data-form="subscription" data-id="${sub?.id || ""}">
+            <div class="task-form-block">${field("Subscription name", "name", sub?.name || "", "text", "maxlength='90' required placeholder='e.g. Music plan'")}</div>
+            <div class="task-form-grid"><div class="task-form-block">${field("Amount (PHP)", "amount", sub?.amount ?? "", "number", "min='0.01' max='999999999' step='0.01' required")}</div><div class="task-form-block">${selectField("Billing cycle", "cycle", sub?.cycle || "monthly", [["monthly", "Monthly"], ["yearly", "Yearly"]])}</div></div>
+            <div class="task-form-block">${field("Next billing date", "nextDate", sub?.nextDate || localDate(), "date", "required")}</div>
+            <div class="task-form-grid"><div class="task-form-block">${selectField("Cancel notice", "cancelDays", String(sub?.cancelDays ?? 1), [["0", "Same day"], ["1", "1 day before"], ["3", "3 days before"], ["7", "7 days before"], ["14", "14 days before"], ["30", "30 days before"]])}</div><div class="task-form-block">${selectField("Reminder", "remindDays", String(sub?.remindDays ?? 3), [["0", "On renewal day"], ["1", "1 day before"], ["3", "3 days before"], ["7", "7 days before"], ["14", "14 days before"]])}</div></div>
+            <div class="task-form-block">${selectField("Status", "status", sub?.status || "active", [["active", "Active"], ["paused", "Paused"], ["cancelled", "Cancelled"]])}</div>
+            <div class="task-form-block">${textArea("Notes (optional)", "note", sub?.note || "", 300)}</div>
+            ${modalFooter("subscription", sub?.id, sub ? "Save subscription" : "Add subscription", true)}</form>`, "modal--quest");
     } else if (type === "income") {
         modalMarkup("Salary & allowance", "", `<form data-form="income">${field("Monthly salary (PHP)","salary",data.finance.salary,"number","min='0' step='0.01' max='999999999' required")}${field("Monthly allowance (PHP)","allowance",data.finance.allowance,"number","min='0' step='0.01' max='999999999' required")}${modalFooter("", "", "Save income")}</form>`);
     } else if (type === "expense") {
@@ -464,10 +833,10 @@ function openEditor(type, identity="", presetDate="") {
     }
 }
 function quickAdd() {
-    modalMarkup("Quick add", "", `<div class="quick-options"><button data-action="new-note">${icon("sticky",24)}<strong>Sticky note</strong></button><button data-action="new-task">${icon("check",24)}<strong>Quest</strong></button><button data-action="new-jar">${icon("jar",24)}<strong>Savings jar</strong></button><button data-action="new-wish">${icon("heart",24)}<strong>Wishlist item</strong></button></div>`);
+    modalMarkup("Quick add", "", `<div class="quick-options"><button data-action="new-note">${icon("sticky",24)}<strong>Sticky note</strong></button><button data-action="new-task">${icon("check",24)}<strong>Quest</strong></button><button data-action="new-jar">${icon("jar",24)}<strong>Savings jar</strong></button><button data-action="new-wish">${icon("heart",24)}<strong>Wish</strong></button><button data-action="new-subscription">${icon("repeat",24)}<strong>Subscription</strong></button></div>`);
 }
 function confirmRemove(type, identity) {
-    const labels={note:"sticky note",task:"quest",jar:"savings jar",wish:"wishlist item",expense:"expense entry"};
+    const labels={note:"sticky note",task:"quest",jar:"savings jar",wish:"wishlist item",expense:"expense entry",subscription:"subscription"};
     modalMarkup(`Delete this ${labels[type]||"item"}?`, "This action can't be undone unless you restore an earlier backup.", `<form data-form="confirm-delete" data-type="${type}" data-id="${esc(identity)}"><div class="modal-bottom"><button class="btn btn-outline" type="button" data-action="close-modal">Keep it</button><button class="btn btn-danger" type="submit">Delete permanently</button></div></form>`);
 }
 function shiftRecurringDate(value, repeat) {
@@ -520,7 +889,18 @@ async function handleForm(event) {
         } else if (kind === "task") {
             const title=get("title");
             if (!title) throw Error("Add a title for your quest.");
-            const content={title,description:get("description"),dueDate:get("dueDate"),dueTime:get("dueTime"),priority:get("priority"),category:get("category"),recurrence:get("recurrence")};
+            const startDate = get("startDate");
+            const dueDate = get("dueDate");
+            const recurrence = get("recurrence");
+            if (startDate && dueDate && startDate > dueDate) throw Error("The due date must be on or after the start date.");
+            if (recurrence !== "none" && !dueDate) throw Error("Repeating quests need a due date.");
+            const subtasks = [...form.querySelectorAll(".checklist-edit-row")].map(row => ({
+                id: row.dataset.subtaskId || id(),
+                text: row.querySelector(".checklist-text").value.trim(),
+                done: row.querySelector(".checklist-completed").checked
+            })).filter(item => item.text);
+            if (subtasks.length > 50) throw Error("A quest can have up to 50 checklist items.");
+            const content={title,description:get("description"),startDate,dueDate,dueTime:dueDate ? get("dueTime") : "",priority:get("priority"),category:get("category"),recurrence,subtasks};
             changeData(db=>{ const existing=db.tasks.find(x=>x.id===identity); if (existing) Object.assign(existing,content); else db.tasks.unshift({id:id(),...content,done:false,createdAt:Date.now()}); });
         } else if (kind === "jar") {
             const target=number(get("target"));
@@ -534,10 +914,40 @@ async function handleForm(event) {
             if (mode==="withdraw" && amount>jar.balance) throw Error("That is more than the jar contains.");
             changeData(db=>{ const j=db.jars.find(x=>x.id===identity); j.balance=number(j.balance+(mode==="withdraw"?-amount:amount)); });
         } else if (kind === "wish") {
-            const price=number(get("price"));
-            const content={name:get("name"),price,url:safeHref(get("url")),priority:get("priority"),note:get("note")};
-            if (get("url") && !content.url) throw Error("Enter a valid http or https link.");
-            changeData(db=>{ const existing=db.wishlist.find(x=>x.id===identity); if (existing) Object.assign(existing,content); else db.wishlist.push({id:id(),...content,purchased:false}); });
+            const priceMode = ["none", "exact", "range"].includes(get("priceMode")) ? get("priceMode") : "none";
+            const price = priceMode === "range" ? number(get("priceMin")) : priceMode === "exact" ? number(get("price")) : 0;
+            const priceMax = priceMode === "range" ? number(get("priceMax")) : 0;
+            if (priceMode === "range" && price && priceMax && priceMax < price) throw Error("The maximum budget must be at least the minimum budget.");
+            const type = ["Item", "Travel", "Experience", "Learning", "Lifestyle", "Other"].includes(get("type")) ? get("type") : "Other";
+            const url = safeHref(get("url"));
+            const imageUrl = safeHref(get("imageUrl"));
+            if (get("url") && !url) throw Error("Enter a valid http or https link.");
+            if (get("imageUrl") && !imageUrl) throw Error("Enter a valid http or https image link.");
+            const existing = data.wishlist.find(x => x.id === identity);
+            let imageData = existing?.imageData || "";
+            if (values.has("removeImage") || (imageUrl && imageUrl !== (existing?.imageUrl || ""))) imageData = "";
+            const file = form.querySelector('[name="imageFile"]')?.files?.[0];
+            if (file) imageData = await shrinkWishlistImage(file);
+            const content={name:get("name"),type,priceMode,price,priceMax,url,imageUrl,imageData,priority:get("priority"),note:get("note")};
+            if (values.has("removeImage") && !file) content.imageUrl = "";
+            changeData(db=>{ const found=db.wishlist.find(x=>x.id===identity); if (found) Object.assign(found,content); else db.wishlist.push({id:id(),...content,purchased:false}); });
+        } else if (kind === "subscription") {
+            const name = get("name");
+            const amount = number(get("amount"));
+            const nextDate = get("nextDate");
+            if (!name || amount <= 0 || !parseLocalDate(nextDate)) throw Error("Enter a subscription name, amount, and billing date.");
+            const cycle = get("cycle") === "yearly" ? "yearly" : "monthly";
+            const cancelDays = Number(get("cancelDays"));
+            const remindDays = Number(get("remindDays"));
+            const status = ["active", "paused", "cancelled"].includes(get("status")) ? get("status") : "active";
+            if (![0, 1, 3, 7, 14, 30].includes(cancelDays) || ![0, 1, 3, 7, 14].includes(remindDays)) throw Error("Choose valid reminder dates.");
+            const content = {name, amount, cycle, nextDate, cancelDays, remindDays, status, note:get("note")};
+            changeData(db => {
+                if (!Array.isArray(db.subscriptions)) db.subscriptions = [];
+                const existing = db.subscriptions.find(x => x.id === identity);
+                if (existing) Object.assign(existing, content);
+                else db.subscriptions.push({id:id(), ...content});
+            });
         } else if (kind === "income") {
             changeData(db=>{db.finance.salary=number(get("salary")); db.finance.allowance=number(get("allowance"));});
         } else if (kind === "expense") {
@@ -556,6 +966,7 @@ async function handleForm(event) {
                 else if (type==="jar") db.jars=db.jars.filter(x=>x.id!==identity);
                 else if (type==="wish") db.wishlist=db.wishlist.filter(x=>x.id!==identity);
                 else if (type==="expense") db.finance.expenses=db.finance.expenses.filter(x=>x.id!==identity);
+                else if (type==="subscription") db.subscriptions=db.subscriptions.filter(x=>x.id!==identity);
             });
         } else if (kind === "pin-change") {
             const oldPin=get("oldPin"), newPin=get("newPin"), confirm=get("confirmPin");
@@ -937,6 +1348,31 @@ function checkReminders() {
             try { new Notification("PersoGoal reminder",{body:t.title,icon:"assets/favicon.svg"}); } catch { /* In-app reminder still works. */ }
         }
     }
+    const today = localDate(now);
+    for (const sub of data.subscriptions || []) {
+        if (sub.status !== "active") continue;
+        const renewal = subscriptionNextDate(sub, today);
+        if (!renewal) continue;
+        const cancelDate = dateWithDayOffset(renewal, -(Number(sub.cancelDays) || 0));
+        const renewalAlertDate = dateWithDayOffset(renewal, -(Number(sub.remindDays) || 0));
+        const cancellationAlertDate = dateWithDayOffset(cancelDate, -3);
+        const cancellationMessage = today > cancelDate
+            ? `${sub.name}: cancellation notice date was ${readableDate(cancelDate)}. Check before the ${readableDate(renewal)} renewal.`
+            : `Cancel ${sub.name} by ${readableDate(cancelDate)} if you don't want the next charge.`;
+        const alerts = [
+            {kind:"cancel", date:cancellationAlertDate, end:renewal, message:cancellationMessage},
+            {kind:"renew", date:renewalAlertDate, end:renewal, message:`${sub.name} renews ${readableDate(renewal)} for ${pesos(sub.amount)}.`}
+        ];
+        for (const alert of alerts) {
+            const mark = `${sub.id}:${renewal}:${alert.kind}`;
+            if (!alert.date || today < alert.date || today > alert.end || shownReminders.has(mark)) continue;
+            shownReminders.add(mark);
+            toast(alert.message);
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                try { new Notification("PersoGoal subscription", {body:alert.message, icon:"assets/favicon.svg"}); } catch { /* In-app alert remains. */ }
+            }
+        }
+    }
 }
 document.addEventListener("submit", handleForm);
 document.addEventListener("click", async event => {
@@ -945,7 +1381,7 @@ document.addEventListener("click", async event => {
     if (target.classList.contains("modal-overlay") && event.target!==target) return;
     const nav=target.dataset.page;
     if (nav && data) {
-        page=nav; menuOpen=false; closeModal(); render();
+        page=nav === "quests" ? "calendar" : nav; menuOpen=false; closeModal(); render();
         window.scrollTo({top:0,behavior:"instant"});
         return;
     }
@@ -961,11 +1397,36 @@ document.addEventListener("click", async event => {
     if (action==="qr-transfer") {qrOpenTransfer();return;}
     if (action==="qr-next") {qrShowPart(qrSourceIndex + 1);return;}
     if (action==="qr-prev") {qrShowPart(qrSourceIndex - 1);return;}
+    if (["date-toggle","date-previous","date-next","date-select","date-clear","date-today"].includes(action)) {
+        const wrapper=target.closest(".date-field");
+        if (!wrapper) return;
+        if (action === "date-toggle") {
+            const pop=wrapper.querySelector(".date-popover");
+            const shouldOpen=pop.hidden;
+            closeDatePickers();
+            if (shouldOpen) {paintDatePicker(wrapper);pop.hidden=false;wrapper.querySelector(".date-trigger").setAttribute("aria-expanded","true");}
+        } else if (action === "date-previous" || action === "date-next") {
+            const [y,m]=wrapper.dataset.pickerMonth.split("-").map(Number);
+            const next=new Date(y,m-1+(action==="date-next"?1:-1),1);
+            wrapper.dataset.pickerMonth=localDate(next).slice(0,7);
+            paintDatePicker(wrapper);
+        } else selectCustomDate(wrapper,action === "date-select" ? target.dataset.value : action === "date-today" ? localDate() : "");
+        return;
+    }
     if (!data) return;
     if (action==="lock") {lockWorkspace();return;}
     if (action==="menu") {menuOpen=!menuOpen;render();return;}
     if (action==="close-menu") {menuOpen=false;render();return;}
     if (action==="quick-add") {quickAdd();return;}
+    if (action==="add-checklist-item") {
+        const editor=document.getElementById("checklist-editor");
+        if (!editor) return;
+        if (editor.children.length >= 50) {toast("Maximum of 50 checklist items.","error");return;}
+        editor.insertAdjacentHTML("beforeend",checklistEditorRow());
+        editor.lastElementChild.querySelector(".checklist-text")?.focus();
+        return;
+    }
+    if (action==="remove-checklist-item") {target.closest(".checklist-edit-row")?.remove();return;}
     if (action==="new-note") {openEditor("note");return;}
     if (action==="edit-note") {openEditor("note",identity);return;}
     if (action==="new-task") {openEditor("task");return;}
@@ -977,6 +1438,8 @@ document.addEventListener("click", async event => {
     if (action==="edit-wish") {openEditor("wish",identity);return;}
     if (action==="edit-income") {openEditor("income");return;}
     if (action==="new-expense") {openEditor("expense");return;}
+    if (action==="new-subscription") {openEditor("subscription");return;}
+    if (action==="edit-subscription") {openEditor("subscription",identity);return;}
     if (action==="edit-expense") {openEditor("expense",identity);return;}
     if (action.startsWith("delete-")) {confirmRemove(action.slice(7),identity);return;}
     if (action==="toggle-task") {
@@ -985,18 +1448,39 @@ document.addEventListener("click", async event => {
             if (!t) return;
             if (!t.done && t.recurrence!=="none" && t.dueDate) {
                 const nextDate=shiftRecurringDate(t.dueDate,t.recurrence);
-                if (nextDate) db.tasks.push({...t,id:id(),dueDate:nextDate,done:false,createdAt:Date.now()});
+                const nextStart=t.startDate ? shiftRecurringDate(t.startDate,t.recurrence) : "";
+                if (nextDate) db.tasks.push({...t,id:id(),startDate:nextStart,dueDate:nextDate,subtasks:(t.subtasks || []).map(s=>({...s,id:id(),done:false})),done:false,createdAt:Date.now()});
             }
             t.done=!t.done;
+        });
+        return;
+    }
+    if (action==="toggle-subtask") {
+        const subtaskId=target.dataset.subtask;
+        changeData(db=>{
+            const t=db.tasks.find(x=>x.id===identity);
+            const subtask=t?.subtasks?.find(x=>x.id===subtaskId);
+            if (subtask) subtask.done=!subtask.done;
         });
         return;
     }
     if (action==="toggle-wish") {changeData(db=>{const w=db.wishlist.find(x=>x.id===identity);if(w)w.purchased=!w.purchased;});return;}
     if (action==="calendar-prev") {monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()-1,1);render();return;}
     if (action==="calendar-next") {monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()+1,1);render();return;}
-    if (action==="calendar-date") {openEditor("task","",target.dataset.date);return;}
+    if (action==="calendar-date") {
+        if (page === "calendar") {
+            selectedCalendarDate = target.dataset.date;
+            taskFilter = "date";
+            render();
+        } else {
+            openEditor("task", "", target.dataset.date);
+        }
+        return;
+    }
+    if (action==="planner-add") {openEditor("task", "", target.dataset.date || "");return;}
     if (action==="filter-tasks") {taskFilter=target.dataset.value;render();return;}
-    if (action==="theme") {changeData(db=>{db.profile.theme=target.dataset.value;});return;}
+    if (action==="theme") {changeData(db=>{db.profile.theme=target.dataset.value === "pink" ? "pink" : "blue";});return;}
+    if (action==="toggle-money") {moneyVisible=!moneyVisible;render();return;}
     if (action==="change-pin") {changePinDialog();return;}
     if (action==="export") {await exportBackup();return;}
     if (action==="import") {importDialog();return;}
@@ -1010,16 +1494,34 @@ document.addEventListener("click", async event => {
         }
     }
 });
+document.addEventListener("change", event => {
+    if (event.target.name === "priceMode" && event.target.closest('form[data-form="wish"]')) {
+        const form=event.target.form;
+        form.querySelector('[data-wish-exact]').hidden=event.target.value!=="exact";
+        form.querySelector('[data-wish-range]').hidden=event.target.value!=="range";
+    }
+    if (event.target.name === "dueDate" && event.target.closest('form[data-form="task"]')) {
+        const time = event.target.form.querySelector('[name="dueTime"]');
+        if (time) {time.disabled = !event.target.value;if (!event.target.value) time.value = "";}
+    }
+});
+document.addEventListener("error", event => {
+    if (event.target.matches?.(".wish-thumb")) event.target.remove();
+}, true);
 document.addEventListener("keydown", event => {
     if (event.key==="Escape") {
         if (document.querySelector(".modal-overlay")) closeModal();
         else if (menuOpen) {menuOpen=false;render();}
     }
 });
-// Lock as soon as a page goes to the background. Some mobile operating systems
-// do not send reliable "closing" events when an app is swiped away.
-document.addEventListener("visibilitychange", () => { if (document.hidden) lockWorkspace(); });
+// Switching browser tabs or changing apps keeps this tab unlocked.
+// Closing, navigating, reloading, or restoring from BFCache requires the PIN.
+// Mobile OSes may silently suspend/kill an app without firing a close event.
 window.addEventListener("pagehide", () => lockWorkspace());
+window.addEventListener("pageshow", event => { if (event.persisted) lockWorkspace(); });
+document.addEventListener("pointerdown", event => {
+    if (!event.target.closest(".date-field")) closeDatePickers();
+});
 setInterval(checkReminders,30000);
 
 vault=readVault();
