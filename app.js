@@ -1,4 +1,4 @@
-/* Little Blue HQ: no build step, no external database, no stored plaintext PIN. */
+/* PersoGoal: no build step, no external database, no stored plaintext PIN. */
 "use strict";
 
 const STORAGE_KEY = "little-blue-hq.v1.encrypted";
@@ -30,7 +30,6 @@ const PATHS = {
     lock: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     unlock: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0"/>',
     bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
-    spark: '<path d="m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3z"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     coin: '<circle cx="12" cy="12" r="9"/><path d="M14.8 8.6c-1.5-1.5-5.8-1-5.8 1.6 0 3 6 1.4 6 4.4 0 2.6-4.4 3.1-6 1.5M12 5v14"/>',
     pencil: '<path d="M4 20l5-.8L20 8a2 2 0 0 0-4-4L5 15l-1 5zM14 6l4 4"/>',
@@ -50,14 +49,13 @@ const PATHS = {
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
     logout: '<path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5M14 7l5 5-5 5M8 12h11"/>',
     edit: '<path d="M4 20l5-.8L20 8a2 2 0 0 0-4-4L5 15l-1 5z"/>',
-    star: '<path d="m12 2 3.1 6.5 7.2 1-5.2 5 .9 7-6-3.3-6 3.3.9-7-5.2-5 7.2-1z"/>',
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     money: '<rect x="2" y="5" width="20" height="14" rx="3"/><circle cx="12" cy="12" r="3"/><path d="M5 9h1m12 6h1"/>',
     search: '<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>'
 };
 
 function icon(name, size = 19, cls = "") {
-    return `<svg class="icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.spark}</svg>`;
+    return `<svg class="icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.info}</svg>`;
 }
 function esc(value) {
     return String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
@@ -128,9 +126,9 @@ function validRecord(r) {
 function seedData() {
     return {
         version:1,
-        profile:{name:"You", workspace:"Little Blue HQ", theme:"light"},
+        profile:{name:"You", workspace:"PersoGoal", theme:"light"},
         notes:[
-            {id:id(), text:"Welcome to your little blue desk! Click me to write your own note.", color:"sky", pinned:true, sortOrder:0, createdAt:Date.now()},
+            {id:id(), text:"Welcome to your PersoGoal desk! Click me to write your own note.", color:"sky", pinned:true, sortOrder:0, createdAt:Date.now()},
             {id:id(), text:"Small steps count. Make today a good one.", color:"paper", pinned:false, sortOrder:1, createdAt:Date.now() - 1000}
         ],
         tasks:[
@@ -202,6 +200,12 @@ async function unlockWorkspace(pin) {
     if (!result || result.version !== 1 || !Array.isArray(result.tasks) || !Array.isArray(result.notes)) throw Error("Invalid workspace");
     activeKey = key;
     data = result;
+    // Preserve existing encrypted data while upgrading the original default name.
+    // Custom workspace names are left untouched.
+    if (data.profile && (!data.profile.workspace || data.profile.workspace === "Little Blue HQ")) {
+        data.profile.workspace = "PersoGoal";
+        writeVault(structuredClone(data), activeKey);
+    }
     page = "overview";
     shownReminders.clear();
     render();
@@ -222,7 +226,7 @@ function toast(message, kind="info") {
     const root = document.getElementById("toast-root");
     const el = document.createElement("div");
     el.className = `toast toast--${kind}`;
-    el.innerHTML = `${icon(kind === "error" ? "info" : "spark",17)}<span>${esc(message)}</span>`;
+    el.innerHTML = `${icon(kind === "error" ? "info" : "check",17)}<span>${esc(message)}</span>`;
     root.appendChild(el);
     setTimeout(() => { el.classList.add("toast-leaving"); setTimeout(() => el.remove(),260); }, 3900);
 }
@@ -251,15 +255,15 @@ function buttonAction(label, action, iconName="plus", extra="") {
 }
 function navMarkup() {
     return `<aside class="sidebar ${menuOpen ? "sidebar--open" : ""}">
-        <div class="brand"><div class="brand-mark">${icon("sticky",26)}</div><div><div class="brand-name">${esc(data.profile.workspace || "Little Blue HQ")}</div><div class="brand-caption">a desk of your own</div></div></div>
+        <div class="brand"><div class="brand-mark">${icon("sticky",26)}</div><div><div class="brand-name">${esc(data.profile.workspace || "PersoGoal")}</div><div class="brand-caption">a desk of your own</div></div></div>
         <div class="sidebar-caption">YOUR WORKSPACE</div>
         <nav class="side-nav" aria-label="Main navigation">${NAV.map(([p,i,label],index) => `<button type="button" class="nav-link ${page===p?"active":""} ${index===7?"nav-link--settings":""}" data-page="${p}">${icon(i,19)}<span>${esc(label)}</span>${p==="quests" && data.tasks.filter(t=>!t.done).length ? `<span class="nav-counter">${data.tasks.filter(t=>!t.done).length}</span>`:""}</button>`).join("")}</nav>
-        <div class="sidebar-bottom"><div class="sidebar-tip grain"><span class="tiny-star">${icon("spark",17)}</span><strong>Little reminder</strong><p>Every big plan starts with one small step.</p></div><button class="sidebar-lock" type="button" data-action="lock">${icon("lock",17)} Lock workspace</button></div>
+        <div class="sidebar-bottom"><div class="sidebar-tip grain"><strong>Little reminder</strong><p>Every big plan starts with one small step.</p></div><button class="sidebar-lock" type="button" data-action="lock">${icon("lock",17)} Lock workspace</button></div>
     </aside>`;
 }
 function render() {
     const root = document.getElementById("app");
-    document.title = data ? `${data.profile.workspace || "Little Blue HQ"} | Private workspace` : "Little Blue HQ | Private workspace";
+    document.title = `PersoGoal | ${data ? labelPage() : "Private workspace"}`;
     if (!vault || vault.invalid || !validRecord(vault)) {
         root.innerHTML = vault && vault.invalid ? `<div class="fatal"><h1>Could not read saved workspace</h1><p>Browser storage may be damaged. Try restoring a backup rather than clearing your data.</p></div>` : renderGate("setup");
         document.body.dataset.theme = "light";
@@ -271,19 +275,19 @@ function render() {
         root.innerHTML = `<div class="app-shell">${navMarkup()}${menuOpen ? '<button class="sidebar-backdrop" data-action="close-menu" aria-label="Close navigation"></button>' : ""}<main class="main-area">
             <header class="topbar"><div class="topbar-left"><button class="icon-button menu-button" data-action="menu" aria-label="Open menu">${icon("menu",23)}</button><span class="breadcrumb">MY SPACE <span>/</span> <strong>${esc(labelPage())}</strong></span></div><div class="topbar-actions"><span class="today-chip">${icon("calendar",16)} ${new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span><button class="icon-button" data-action="lock" title="Lock now" aria-label="Lock now">${icon("lock",19)}</button><button class="btn btn-primary btn-small" data-action="quick-add">${icon("plus",18)}<span>Quick add</span></button></div></header>
             <div class="main-content">${renderPage()}</div>
-            <footer class="site-footer">Made for slow mornings and big dreams. <span>Local-first, just for you.</span></footer>
+            <footer class="site-footer">© ${new Date().getFullYear()} HORHE PERSONAL. <span>All rights reserved.</span></footer>
         </main></div>`;
     }
 }
 function renderGate(mode) {
     const setup = mode === "setup";
-    return `<div class="gate-shell"><div class="gate-left grain"><div class="gate-brand">${icon("sticky",25)} Little Blue HQ.</div><div class="gate-copy"><span class="gate-eyebrow">A CORNER JUST FOR YOU</span><h1>Your plans deserve<br><em>a happy place.</em></h1><p>Sticky notes, tiny quests, savings jars, and all your big little dreams. Safely tucked inside your own browser.</p><img class="gate-art" src="assets/desk-scene.svg" alt="Cartoon notebook, cloud, sticky note, and cup" /></div><div class="gate-foot">BLUE-TONED. HAND-DRAWN. ALL YOURS.</div></div>
-        <div class="gate-right"><div class="gate-card"><div class="gate-card-icon">${icon(setup ? "spark" : "lock",27)}</div><div class="eyebrow">${setup ? "FIRST-TIME SETUP" : "WELCOME BACK"}</div><h2>${setup ? "Let's make it yours." : "Your desk is waiting."}</h2><p>${setup ? "Set a PIN to open your personal workspace. No account, database, or hardcoded password." : "Enter your PIN to unlock your sticky notes, plans, and savings."}</p>
+    return `<div class="gate-shell"><div class="gate-left grain"><div class="gate-brand">${icon("sticky",25)} PersoGoal.</div><div class="gate-copy"><span class="gate-eyebrow">A CORNER JUST FOR YOU</span><h1>Your plans deserve<br><em>a happy place.</em></h1><p>Sticky notes, tiny quests, savings jars, and all your big little dreams. Safely tucked inside your own browser.</p><img class="gate-art" src="assets/desk-scene.svg" alt="Cartoon notebook, cloud, sticky note, and cup" /></div><div class="gate-foot">BLUE-TONED. HAND-DRAWN. ALL YOURS.</div></div>
+        <div class="gate-right"><div class="gate-card"><div class="gate-card-icon">${icon("lock",27)}</div><div class="eyebrow">${setup ? "FIRST-TIME SETUP" : "WELCOME BACK"}</div><h2>${setup ? "Let's make it yours." : "Your desk is waiting."}</h2><p>${setup ? "Set a PIN to open your personal workspace. No account, database, or hardcoded password." : "Enter your PIN to unlock your sticky notes, plans, and savings."}</p>
             <form id="gate-form" data-form="${setup?"setup":"unlock"}" autocomplete="off">
                 ${setup ? `<label class="field-label">PIN length</label><div class="segmented"><button type="button" data-action="pin-choice" data-value="4" class="segment ${pinLengthChoice===4?"selected":""}">4 digits</button><button type="button" data-action="pin-choice" data-value="6" class="segment ${pinLengthChoice===6?"selected":""}">6 digits</button></div>`:""}
                 <label class="field-label" for="pin-field">${setup ? "Create your PIN" : "Enter your PIN"}</label><input id="pin-field" class="input pin-input" type="password" name="pin" inputmode="numeric" pattern="[0-9]{${setup ? pinLengthChoice : vault.pinLength}}" maxlength="${setup ? pinLengthChoice : vault.pinLength}" minlength="${setup ? pinLengthChoice : vault.pinLength}" placeholder="${"●".repeat(setup ? pinLengthChoice : vault.pinLength)}" required autocomplete="off" />
                 ${setup ? `<label class="field-label" for="pin-confirm">Confirm your PIN</label><input id="pin-confirm" class="input pin-input" type="password" name="confirm" inputmode="numeric" maxlength="${pinLengthChoice}" minlength="${pinLengthChoice}" pattern="[0-9]{${pinLengthChoice}}" placeholder="Enter the same PIN" required autocomplete="off" />`:""}
-                <div id="gate-error" class="form-error" role="alert"></div><button class="btn btn-primary btn-full gate-submit" type="submit">${icon(setup ? "spark" : "unlock",19)}${setup ? "Create my workspace" : "Unlock workspace"}${icon("arrow",18)}</button>
+                <div id="gate-error" class="form-error" role="alert"></div><button class="btn btn-primary btn-full gate-submit" type="submit">${icon(setup ? "lock" : "unlock",19)}${setup ? "Create my workspace" : "Unlock workspace"}${icon("arrow",18)}</button>
             </form><div class="gate-notice">${icon("info",17)}<span>${setup ? "Your data stays in this browser. Save encrypted backups from Settings. A short PIN protects against casual access, not determined attackers." : "Your workspace locks on refresh, tab switch, app switch, or browser close."}</span></div>
         </div></div></div>`;
 }
@@ -303,7 +307,7 @@ function renderOverview() {
     const open = data.tasks.filter(t => !t.done);
     const upcoming = open.filter(t => t.dueDate && t.dueDate >= localDate()).length;
     const displayName = data.profile.name.trim() || "friend";
-    return `<section class="hero grain"><div class="hero-copy"><div class="hero-badge">${icon("spark",15)} YOUR COZY LITTLE CORNER</div><h1>Hello, ${esc(displayName)}<span class="wave-dot">.</span><br><span>Let's make today count.</span></h1><p>A gentle place for your tasks, dreams, and everything in between.</p><button type="button" class="btn btn-dark" data-action="new-task">${icon("plus",18)} Create a quest</button></div><img src="assets/desk-scene.svg" class="hero-art" alt="Textured cartoon desk with notebook and stationery" /></section>
+    return `<section class="hero grain"><div class="hero-copy"><div class="hero-badge">YOUR COZY LITTLE CORNER</div><h1>Hello, ${esc(displayName)}<span class="wave-dot">.</span><br><span>Let's make today count.</span></h1><p>A gentle place for your tasks, dreams, and everything in between.</p><button type="button" class="btn btn-dark" data-action="new-task">${icon("plus",18)} Create a quest</button></div><img src="assets/desk-scene.svg" class="hero-art" alt="Textured cartoon desk with notebook and stationery" /></section>
     <div class="stat-grid">
         ${statCard("TO-DO QUESTS",open.length,"check","sky","Things on your list")}
         ${statCard("UPCOMING",upcoming,"calendar","ice","Deadlines ahead")}
@@ -324,11 +328,11 @@ function statCard(label,value,symbol,tone,subtitle) {
 }
 function renderNotes(max) {
     const sorted = [...data.notes].sort((a,b) => Number(b.pinned)-Number(a.pinned) || (a.sortOrder ?? -(a.createdAt||0))-(b.sortOrder ?? -(b.createdAt||0)));
-    return sorted.slice(0,max || Infinity).map(n => `<button type="button" class="sticky-note grain note--${["sky","paper","slate","night"].includes(n.color)?n.color:"sky"}" data-action="edit-note" data-id="${n.id}" draggable="true"><span class="note-pin">${n.pinned ? icon("pin",18) : icon("spark",15)}</span><span class="note-text">${esc(shortText(n.text,max?135:550))}</span><span class="note-end">${new Date(n.createdAt || Date.now()).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}${icon("edit",15)}</span></button>`).join("");
+    return sorted.slice(0,max || Infinity).map(n => `<button type="button" class="sticky-note grain note--${["sky","paper","slate","night"].includes(n.color)?n.color:"sky"}" data-action="edit-note" data-id="${n.id}" draggable="true"><span class="note-pin">${n.pinned ? icon("pin",18) : icon("sticky",15)}</span><span class="note-text">${esc(shortText(n.text,max?135:550))}</span><span class="note-end">${new Date(n.createdAt || Date.now()).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}${icon("edit",15)}</span></button>`).join("");
 }
 function renderNotesPage() {
     return `${sectionTitle("STICKY STUFF","A wall of little thoughts.","Pin reminders, jot down ideas, and keep the good ones close.",buttonAction("New sticky note","new-note"))}
-        <div class="notice-strip">${icon("spark",18)} Click to edit a note or drag to rearrange it on desktop. Notes save to encrypted local storage.</div>
+        <div class="notice-strip">${icon("info",18)} Click to edit a note or drag to rearrange it on desktop. Notes save to encrypted local storage.</div>
         <div class="notes-grid notes-grid--full">${renderNotes()}<button class="add-note-tile" data-action="new-note">${icon("plus",28)}<span>Write something new</span></button></div>`;
 }
 function renderTask(t) {
@@ -342,7 +346,7 @@ function renderQuestsPage() {
     else if (taskFilter === "done") tasks = tasks.filter(t=>t.done);
     const complete = data.tasks.filter(t=>t.done).length;
     return `${sectionTitle("THE QUEST LOG","Small steps, big progress.","Organize work, errands, daily goals, and every adventure in between.",buttonAction("Add quest","new-task"))}
-    <div class="quest-intro grain"><div><span class="eyebrow">YOUR PROGRESS</span><h2>${complete} of ${data.tasks.length} quests finished</h2><p>It's okay to take your time. Every checked box is a win.</p><div class="progress-track"><div class="progress-fill" style="width:${percent(complete,data.tasks.length)}%"></div></div></div><div class="quest-intro-star">${icon("star",73)}</div></div>
+    <div class="quest-intro grain"><div><span class="eyebrow">YOUR PROGRESS</span><h2>${complete} of ${data.tasks.length} quests finished</h2><p>It's okay to take your time. Every checked box is a win.</p><div class="progress-track"><div class="progress-fill" style="width:${percent(complete,data.tasks.length)}%"></div></div></div><div class="quest-intro-badge">${icon("check",69)}</div></div>
     <section class="panel"><div class="filter-row">${[["all","All quests"],["today","Today"],["upcoming","Upcoming"],["done","Completed"]].map(([k,l])=>`<button data-action="filter-tasks" data-value="${k}" class="filter-pill ${taskFilter===k?"active":""}">${l}</button>`).join("")}</div><div class="quest-list quest-list--page">${tasks.length?tasks.map(renderTask).join(""):emptyState("check","Nothing here yet.","Try a different filter or add a new quest.")}</div></section>`;
 }
 function calendarCells(date) {
@@ -371,17 +375,27 @@ function jarSvg(j, width=150) {
     const ratio = percent(j.balance,j.target);
     const safeId = String(j.id).replace(/[^a-z0-9-]/gi,"").slice(0,30);
     const y=126-(ratio/100)*84;
-    return `<svg class="jar-drawing" width="${width}" height="${Math.round(width*1.2)}" viewBox="0 0 130 157" role="img" aria-label="Savings jar ${ratio}% filled"><defs><clipPath id="clip-${safeId}"><path d="M33 30h64l8 92q0 18-40 18t-40-18z"/></clipPath></defs><ellipse cx="65" cy="143" rx="45" ry="7" fill="#355471" opacity=".1"/><path d="M33 30h64l8 92q0 18-40 18t-40-18z" fill="#EFF8FF" stroke="#3E6687" stroke-width="3.5"/><g clip-path="url(#clip-${safeId})"><rect x="16" y="${y}" width="100" height="124" fill="#95CEEF"/><path d="M18 ${y+4}q20-8 42 0t54 0" stroke="#E5F6FF" stroke-width="5" fill="none"/><g fill="#ECF7FF" stroke="#5E9BC6" stroke-width="2"><circle cx="46" cy="110" r="10"/><circle cx="68" cy="117" r="10"/><circle cx="84" cy="100" r="10"/><circle cx="58" cy="84" r="10"/><circle cx="80" cy="137" r="10"/></g></g><path d="M36 44q-7 27-5 50" stroke="white" stroke-width="6" opacity=".7" stroke-linecap="round"/><rect x="26" y="19" width="78" height="15" rx="6" fill="#719AB8" stroke="#315774" stroke-width="3"/><rect x="29" y="15" width="72" height="10" rx="5" fill="#D0E8F8" stroke="#315774" stroke-width="3"/><rect x="38" y="67" width="54" height="31" rx="7" fill="#FFFFFF" stroke="#608CAD" stroke-width="2.5"/><path d="M49 79h32M54 87h22" stroke="#8EB8D6" stroke-width="3.5" stroke-linecap="round"/></svg>`;
+    return `<svg class="jar-drawing" width="${width}" height="${Math.round(width*1.2)}" viewBox="0 0 130 157" role="img" aria-label="Savings jar ${ratio}% filled"><defs>
+        <clipPath id="clip-${safeId}"><path d="M33 30h64l8 92q0 18-40 18t-40-18z"/></clipPath>
+        <pattern id="jar-print-${safeId}" patternUnits="userSpaceOnUse" width="58" height="58"><circle cx="32.2" cy="20.5" r="0.52" fill="#174968" opacity="0.40"/><circle cx="19.8" cy="14.6" r="1.10" fill="#174968" opacity="0.51"/><circle cx="51.2" cy="5.4" r="0.25" fill="#174968" opacity="0.74"/><circle cx="45.4" cy="34.8" r="1.10" fill="#174968" opacity="0.81"/><path d="M26.5 27.9l1.0 0.2" stroke="#174968" stroke-width="0.42" opacity="0.38" stroke-linecap="round"/><circle cx="56.6" cy="1.2" r="0.25" fill="#174968" opacity="0.49"/><circle cx="53.3" cy="8.9" r="0.25" fill="#174968" opacity="0.40"/><circle cx="35.9" cy="54.2" r="0.52" fill="#174968" opacity="0.78"/><path d="M34.0 34.8l2.5 0.4" stroke="#174968" stroke-width="0.42" opacity="0.39" stroke-linecap="round"/><circle cx="43.5" cy="55.1" r="0.80" fill="#174968" opacity="0.59"/><circle cx="4.9" cy="40.7" r="0.25" fill="#174968" opacity="0.71"/><circle cx="3.4" cy="4.6" r="0.52" fill="#174968" opacity="0.64"/><circle cx="15.5" cy="9.4" r="1.10" fill="#174968" opacity="0.45"/><circle cx="17.3" cy="25.8" r="0.42" fill="#174968" opacity="0.66"/><path d="M11.2 5.3l1.7 0.4" stroke="#174968" stroke-width="0.25" opacity="0.57" stroke-linecap="round"/><circle cx="32.4" cy="17.5" r="0.35" fill="#174968" opacity="0.66"/><path d="M40.6 27.6l2.2 -0.4" stroke="#174968" stroke-width="0.65" opacity="0.57" stroke-linecap="round"/><circle cx="11.6" cy="21.5" r="0.80" fill="#174968" opacity="0.74"/><circle cx="36.7" cy="3.7" r="0.25" fill="#174968" opacity="0.50"/><circle cx="34.7" cy="11.3" r="0.35" fill="#174968" opacity="0.75"/><circle cx="51.5" cy="43.0" r="0.35" fill="#174968" opacity="0.59"/><circle cx="26.0" cy="33.7" r="1.10" fill="#174968" opacity="0.71"/><circle cx="37.1" cy="8.0" r="0.65" fill="#174968" opacity="0.42"/><path d="M52.2 23.3l1.7 -0.2" stroke="#174968" stroke-width="1.10" opacity="0.72" stroke-linecap="round"/><path d="M33.8 18.9l1.6 -0.3" stroke="#174968" stroke-width="0.65" opacity="0.76" stroke-linecap="round"/><circle cx="49.7" cy="7.6" r="0.65" fill="#174968" opacity="0.54"/><circle cx="8.7" cy="34.4" r="0.25" fill="#174968" opacity="0.62"/><circle cx="25.3" cy="13.4" r="0.52" fill="#174968" opacity="0.62"/><path d="M1.9 35.3l1.9 0.6" stroke="#174968" stroke-width="0.25" opacity="0.50" stroke-linecap="round"/><circle cx="16.3" cy="23.6" r="0.65" fill="#174968" opacity="0.42"/><circle cx="12.2" cy="51.7" r="0.25" fill="#174968" opacity="0.55"/><path d="M44.9 34.5l2.2 -0.6" stroke="#174968" stroke-width="0.52" opacity="0.75" stroke-linecap="round"/><circle cx="13.6" cy="54.6" r="0.65" fill="#174968" opacity="0.48"/><circle cx="17.3" cy="44.0" r="0.52" fill="#174968" opacity="0.54"/><path d="M38.3 39.2l1.7 -0.6" stroke="#174968" stroke-width="0.25" opacity="0.70" stroke-linecap="round"/><circle cx="40.8" cy="12.8" r="0.65" fill="#174968" opacity="0.56"/><circle cx="8.4" cy="5.4" r="0.42" fill="#174968" opacity="0.75"/><circle cx="22.9" cy="35.0" r="0.25" fill="#174968" opacity="0.37"/><circle cx="29.4" cy="40.4" r="0.42" fill="#174968" opacity="0.62"/><path d="M45.5 31.3l1.8 -0.0" stroke="#174968" stroke-width="0.65" opacity="0.52" stroke-linecap="round"/><circle cx="21.2" cy="32.9" r="0.52" fill="#174968" opacity="0.58"/><circle cx="33.7" cy="28.3" r="1.10" fill="#174968" opacity="0.77"/><circle cx="34.7" cy="37.4" r="0.42" fill="#174968" opacity="0.40"/><circle cx="12.9" cy="6.2" r="0.35" fill="#174968" opacity="0.54"/><circle cx="5.6" cy="38.8" r="0.25" fill="#174968" opacity="0.59"/><circle cx="46.1" cy="55.8" r="0.42" fill="#174968" opacity="0.72"/><circle cx="32.6" cy="40.6" r="0.35" fill="#174968" opacity="0.68"/><circle cx="41.8" cy="2.5" r="0.25" fill="#174968" opacity="0.47"/><circle cx="9.6" cy="42.1" r="1.10" fill="#174968" opacity="0.46"/><path d="M37.6 30.2l1.0 -0.1" stroke="#174968" stroke-width="0.52" opacity="0.71" stroke-linecap="round"/><path d="M56.5 9.6l2.1 0.1" stroke="#174968" stroke-width="1.10" opacity="0.68" stroke-linecap="round"/><circle cx="22.8" cy="25.3" r="0.80" fill="#174968" opacity="0.76"/><circle cx="38.7" cy="11.1" r="0.52" fill="#174968" opacity="0.53"/><path d="M1.6 33.0l1.3 -0.3" stroke="#174968" stroke-width="0.52" opacity="0.49" stroke-linecap="round"/><circle cx="53.1" cy="24.5" r="0.25" fill="#174968" opacity="0.49"/><circle cx="4.7" cy="22.3" r="0.25" fill="#174968" opacity="0.49"/><path d="M52.3 34.9l1.0 -0.2" stroke="#174968" stroke-width="0.52" opacity="0.58" stroke-linecap="round"/><circle cx="35.3" cy="3.7" r="0.35" fill="#174968" opacity="0.75"/><circle cx="0.5" cy="33.5" r="0.65" fill="#174968" opacity="0.75"/><path d="M8.5 42.9l1.3 -0.5" stroke="#174968" stroke-width="0.80" opacity="0.80" stroke-linecap="round"/><circle cx="23.2" cy="15.7" r="0.42" fill="#174968" opacity="0.76"/><path d="M55.9 7.8l2.0 0.0" stroke="#174968" stroke-width="0.25" opacity="0.49" stroke-linecap="round"/><circle cx="55.5" cy="18.0" r="0.25" fill="#174968" opacity="0.76"/><circle cx="53.1" cy="52.8" r="0.25" fill="#174968" opacity="0.55"/><path d="M33.0 27.7l1.2 0.2" stroke="#174968" stroke-width="0.65" opacity="0.54" stroke-linecap="round"/><circle cx="48.9" cy="0.6" r="1.10" fill="#174968" opacity="0.73"/><circle cx="25.0" cy="14.9" r="0.35" fill="#174968" opacity="0.63"/><circle cx="8.2" cy="28.6" r="0.65" fill="#174968" opacity="0.52"/><circle cx="12.9" cy="17.2" r="0.80" fill="#174968" opacity="0.77"/><circle cx="4.6" cy="22.7" r="0.35" fill="#174968" opacity="0.68"/><circle cx="46.9" cy="50.0" r="1.10" fill="#174968" opacity="0.73"/><circle cx="47.5" cy="54.1" r="0.52" fill="#174968" opacity="0.67"/><path d="M34.5 57.8l2.0 -0.4" stroke="#174968" stroke-width="0.42" opacity="0.77" stroke-linecap="round"/><path d="M11.3 31.1l1.3 0.2" stroke="#174968" stroke-width="1.10" opacity="0.37" stroke-linecap="round"/><circle cx="45.7" cy="23.7" r="0.42" fill="#174968" opacity="0.44"/><path d="M11.3 52.3l1.7 -0.1" stroke="#174968" stroke-width="0.42" opacity="0.45" stroke-linecap="round"/><circle cx="30.7" cy="40.9" r="0.35" fill="#174968" opacity="0.47"/><circle cx="14.3" cy="41.5" r="0.42" fill="#174968" opacity="0.43"/><circle cx="43.2" cy="51.4" r="0.52" fill="#174968" opacity="0.38"/><circle cx="35.3" cy="8.7" r="0.42" fill="#174968" opacity="0.51"/><circle cx="43.4" cy="17.5" r="0.80" fill="#174968" opacity="0.74"/><circle cx="7.6" cy="1.6" r="1.10" fill="#174968" opacity="0.42"/><circle cx="13.1" cy="27.6" r="0.25" fill="#174968" opacity="0.56"/><circle cx="16.3" cy="20.4" r="0.80" fill="#174968" opacity="0.59"/><path d="M17.9 8.2l2.4 -0.1" stroke="#174968" stroke-width="0.42" opacity="0.80" stroke-linecap="round"/></pattern>
+        <filter id="jar-rough-${safeId}" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="4" seed="12" stitchTiles="stitch" result="noise"/>
+            <feColorMatrix in="noise" type="matrix" values="0 0 0 0 .15  0 0 0 0 .28  0 0 0 0 .43  1.45 0 0 0 -.55"/>
+        </filter>
+    </defs><ellipse cx="65" cy="143" rx="45" ry="7" fill="#355471" opacity=".1"/><path d="M33 30h64l8 92q0 18-40 18t-40-18z" fill="#EFF8FF" stroke="#3E6687" stroke-width="3.5"/><g clip-path="url(#clip-${safeId})"><rect x="16" y="${y}" width="100" height="124" fill="#95CEEF"/><path d="M18 ${y+4}q20-8 42 0t54 0" stroke="#E5F6FF" stroke-width="5" fill="none"/><g fill="#ECF7FF" stroke="#5E9BC6" stroke-width="2"><circle cx="46" cy="110" r="10"/><circle cx="68" cy="117" r="10"/><circle cx="84" cy="100" r="10"/><circle cx="58" cy="84" r="10"/><circle cx="80" cy="137" r="10"/></g></g><path d="M36 44q-7 27-5 50" stroke="white" stroke-width="6" opacity=".7" stroke-linecap="round"/><rect x="26" y="19" width="78" height="15" rx="6" fill="#719AB8" stroke="#315774" stroke-width="3"/><rect x="29" y="15" width="72" height="10" rx="5" fill="#D0E8F8" stroke="#315774" stroke-width="3"/><rect x="38" y="67" width="54" height="31" rx="7" fill="#FFFFFF" stroke="#608CAD" stroke-width="2.5"/><path d="M49 79h32M54 87h22" stroke="#8EB8D6" stroke-width="3.5" stroke-linecap="round"/>
+    <g clip-path="url(#clip-${safeId})" opacity=".73"><rect x="23" y="31" width="84" height="110" filter="url(#jar-rough-${safeId})"/></g>
+    <g clip-path="url(#clip-${safeId})" opacity=".8"><rect x="23" y="31" width="84" height="110" fill="url(#jar-print-${safeId})"/></g>
+    </svg>`;
 }
 function renderSavingsPage() {
     return `${sectionTitle("FILL THE JAR","Save for your someday.","Track your savings with little illustrated jars that fill as you go.",buttonAction("Create savings jar","new-jar"))}
-        <div class="savings-summary grain">${icon("jar",32)}<div><span>YOUR TOTAL SAVINGS</span><strong>${pesos(totalSaved())}</strong></div><div class="savings-summary-stars">${icon("spark",30)} ${icon("spark",18)}</div></div>
+        <div class="savings-summary grain">${icon("jar",32)}<div><span>YOUR TOTAL SAVINGS</span><strong>${pesos(totalSaved())}</strong></div></div>
         <div class="jar-grid">${data.jars.map(j=>`<article class="jar-card grain"><div class="jar-card-top"><span class="little-label">SAVINGS GOAL</span><button class="icon-button" data-action="edit-jar" data-id="${j.id}" aria-label="Edit jar">${icon("edit",17)}</button></div>${jarSvg(j)}<h3>${esc(j.name)}</h3><strong class="jar-balance">${pesos(j.balance)}</strong><p>of ${pesos(j.target)}</p><div class="progress-track"><div class="progress-fill" style="width:${percent(j.balance,j.target)}%"></div></div><span class="progress-caption">${percent(j.balance,j.target)}% of goal</span><div class="jar-buttons"><button class="btn btn-primary" data-action="jar-deposit" data-id="${j.id}">${icon("plus",16)} Deposit</button><button class="btn btn-outline" data-action="jar-withdraw" data-id="${j.id}">Withdraw</button></div></article>`).join("")}
         <button type="button" class="empty-add-card" data-action="new-jar">${icon("plus",34)}<strong>Another little goal?</strong><span>Create a savings jar</span></button></div>`;
 }
 function renderWishlistPage() {
     return `${sectionTitle("THINGS TO LOOK FORWARD TO","The someday wishlist.","A home for the little things and big purchases you're dreaming of.",buttonAction("Add a wish","new-wish"))}
-        <div class="wishlist-grid">${data.wishlist.map(w=>`<article class="wish-card grain ${w.purchased?"wish-card--bought":""}"><div class="wish-illustration"><div class="wish-spark">${icon("spark",25)}</div>${icon("gift",70)}<span class="wish-tag">${esc(w.priority || "Someday")}</span></div><div class="wish-body"><div class="wish-title-row"><h3>${esc(w.name)}</h3><button class="icon-button" data-action="edit-wish" data-id="${w.id}" aria-label="Edit wish">${icon("edit",17)}</button></div><div class="wish-price">${pesos(w.price)}</div><p>${esc(shortText(w.note,130)||"Something to look forward to.")}</p><div class="wish-actions"><button class="mini-outline" data-action="toggle-wish" data-id="${w.id}">${icon("check",15)} ${w.purchased?"Mark unbought":"Mark purchased"}</button>${safeHref(w.url)?`<a class="wish-link" target="_blank" rel="noopener noreferrer" href="${esc(safeHref(w.url))}" aria-label="Open product link">${icon("link",16)}</a>`:""}</div></div></article>`).join("")}
+        <div class="wishlist-grid">${data.wishlist.map(w=>`<article class="wish-card grain ${w.purchased?"wish-card--bought":""}"><div class="wish-illustration">${icon("gift",70)}<span class="wish-tag">${esc(w.priority || "Someday")}</span></div><div class="wish-body"><div class="wish-title-row"><h3>${esc(w.name)}</h3><button class="icon-button" data-action="edit-wish" data-id="${w.id}" aria-label="Edit wish">${icon("edit",17)}</button></div><div class="wish-price">${pesos(w.price)}</div><p>${esc(shortText(w.note,130)||"Something to look forward to.")}</p><div class="wish-actions"><button class="mini-outline" data-action="toggle-wish" data-id="${w.id}">${icon("check",15)} ${w.purchased?"Mark unbought":"Mark purchased"}</button>${safeHref(w.url)?`<a class="wish-link" target="_blank" rel="noopener noreferrer" href="${esc(safeHref(w.url))}" aria-label="Open product link">${icon("link",16)}</a>`:""}</div></div></article>`).join("")}
         <button type="button" class="empty-add-card" data-action="new-wish">${icon("heart",34)}<strong>Dreaming of something?</strong><span>Add a wishlist item</span></button></div>`;
 }
 function renderFinancesPage() {
@@ -395,7 +409,7 @@ function renderFinancesPage() {
         <section class="panel"><div class="panel-heading"><div><div class="eyebrow">SPENDING BREAKDOWN</div><h2>Monthly overview</h2></div></div><div class="spending-illustration">${icon("coin",75)}<span>${spentPercentage}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${spentPercentage}%"></div></div><p class="panel-paragraph">${total>0 ? `You've logged ${pesos(spent)} in expenses against ${pesos(total)} of planned monthly income.` : "Set your income to begin tracking your monthly spending."}</p><div class="inline-help">${icon("info",16)} Savings jar balances are tracked separately from monthly expenses.</div></section></div>`;
 }
 function renderSettingsPage() {
-    return `${sectionTitle("MAKE IT YOURS","Your space, your rules.","Customize your little blue desk and keep your data safe.")}
+    return `${sectionTitle("MAKE IT YOURS","Your space, your rules.","Customize your personal desk and keep your data safe.")}
         <div class="settings-grid"><section class="panel settings-card"><div class="settings-icon">${icon("edit",24)}</div><h2>Personal details</h2><p>Choose how your workspace greets you.</p><form data-form="profile"><label class="field-label">Your display name</label><input class="input" name="name" value="${esc(data.profile.name)}" maxlength="34" required/><label class="field-label">Workspace name</label><input class="input" name="workspace" value="${esc(data.profile.workspace)}" maxlength="38" required/><button class="btn btn-primary" type="submit">Save details</button></form></section>
         <section class="panel settings-card"><div class="settings-icon">${icon("sun",24)}</div><h2>Appearance</h2><p>Cool blues, comfortable contrast, and textured cards.</p><div class="theme-options"><button type="button" class="theme-option ${data.profile.theme!=="dark"?"selected":""}" data-action="theme" data-value="light"><span class="theme-swatch theme-swatch--light"></span>Cloud blue</button><button type="button" class="theme-option ${data.profile.theme==="dark"?"selected":""}" data-action="theme" data-value="dark"><span class="theme-swatch theme-swatch--dark"></span>Midnight blue</button></div></section>
         <section class="panel settings-card"><div class="settings-icon">${icon("lock",24)}</div><h2>Privacy and PIN</h2><p>Your actual PIN is never saved. Your notes are encrypted in this browser.</p><div class="settings-actions"><button class="btn btn-outline" data-action="change-pin">${icon("lock",17)} Change PIN</button><button class="btn btn-outline" data-action="lock">${icon("logout",17)} Lock right now</button></div><p class="fineprint">A 4- or 6-digit PIN is a convenience lock and can be guessed by determined attackers. For sensitive data, use a longer password-based system.</p></section>
@@ -416,7 +430,7 @@ function textArea(label,name,value,limit=1500) {
     return `<label class="field-label" for="f-${name}">${esc(label)}</label><textarea class="input textarea" id="f-${name}" name="${name}" maxlength="${limit}" rows="4">${esc(value||"")}</textarea>`;
 }
 function modalMarkup(title, description, inner, className="") {
-    document.getElementById("modal-root").innerHTML = `<div class="modal-overlay" data-action="close-modal"><div class="modal ${className}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-top"><div><div class="eyebrow">LITTLE BLUE HQ</div><h2>${esc(title)}</h2><p>${esc(description)}</p></div><button type="button" class="icon-button" data-action="close-modal" aria-label="Close">${icon("close",21)}</button></div>${inner}</div></div>`;
+    document.getElementById("modal-root").innerHTML = `<div class="modal-overlay" data-action="close-modal"><div class="modal ${className}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-top"><div><div class="eyebrow">PERSOGOAL</div><h2>${esc(title)}</h2><p>${esc(description)}</p></div><button type="button" class="icon-button" data-action="close-modal" aria-label="Close">${icon("close",21)}</button></div>${inner}</div></div>`;
     document.querySelector(".modal input:not([type='hidden']),.modal textarea,.modal select,.modal button[data-autofocus]")?.focus({preventScroll:true});
 }
 function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
@@ -560,7 +574,7 @@ async function handleForm(event) {
             const file=values.get("file"), pin=get("backupPin");
             if (!file || !file.size || file.size>4000000) throw Error("Choose an encrypted JSON backup under 4 MB.");
             const record=JSON.parse(await file.text());
-            if (!validRecord(record)) throw Error("This doesn't look like a Little Blue HQ backup.");
+            if (!validRecord(record)) throw Error("This does not look like a compatible encrypted workspace backup.");
             const k=await deriveKey(pin,record.salt);
             const decoded=await decryptData(record,k);
             if (!decoded || decoded.version!==1 || !Array.isArray(decoded.notes)) throw Error("Could not read backup data.");
@@ -599,7 +613,7 @@ async function exportBackup() {
     const file=new Blob([JSON.stringify(JSON.parse(current),null,2)],{type:"application/json"});
     const url=URL.createObjectURL(file);
     const a=document.createElement("a");
-    a.href=url; a.download=`little-blue-hq-backup-${localDate()}.json`;
+    a.href=url; a.download=`persogoal-backup-${localDate()}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     toast("Encrypted backup exported. Keep your PIN safe.");
@@ -615,7 +629,7 @@ function checkReminders() {
         shownReminders.add(t.id);
         toast(`Reminder: ${t.title}`);
         if (typeof Notification!=="undefined" && Notification.permission==="granted") {
-            try { new Notification("Little Blue HQ reminder",{body:t.title,icon:"assets/favicon.svg"}); } catch { /* In-app reminder still works. */ }
+            try { new Notification("PersoGoal reminder",{body:t.title,icon:"assets/favicon.svg"}); } catch { /* In-app reminder still works. */ }
         }
     }
 }

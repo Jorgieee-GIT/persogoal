@@ -1,6 +1,6 @@
 :root {
     color-scheme: light;
-    font-family: "DM Sans", system-ui, sans-serif;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     --bg: #edf5fc;
     --surface: #ffffff;
     --surface-soft: #f4f9fe;
@@ -32,19 +32,19 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--ink); min-width: 320px; }
-body, button, input, select, textarea { font-family: "DM Sans", system-ui, sans-serif; }
+body, button, input, select, textarea { font-family: "Plus Jakarta Sans", system-ui, sans-serif; }
 button, input, select, textarea { font-size: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid #7ebef3; outline-offset: 3px; }
 a { color: inherit; }
 h1, h2, h3, h4, p { margin-top: 0; }
-h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fredoka", "DM Sans", sans-serif; font-weight: 500; }
+h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; font-weight: 700; }
 .icon { flex: none; vertical-align: middle; }
 .grain { position: relative; isolation: isolate; }
-.grain::after { content: ""; position: absolute; z-index: 0; inset: 0; background: url("assets/grain.svg") repeat; background-size: 145px 145px; opacity: .11; mix-blend-mode: multiply; border-radius: inherit; pointer-events: none; }
+.grain::after { content: ""; position: absolute; z-index: 0; inset: 0; background: url("assets/grain.svg") repeat; background-size: 190px 190px; opacity: .41; mix-blend-mode: multiply; border-radius: inherit; pointer-events: none; }
 .grain > * { position: relative; z-index: 1; }
-[data-theme="dark"] .grain::after { opacity: .08; mix-blend-mode: screen; }
+[data-theme="dark"] .grain::after { opacity: .24; mix-blend-mode: screen; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .muted-small, .eyebrow, .little-label { letter-spacing: .11em; color: var(--muted); font-size: 10px; font-weight: 800; }
 .eyebrow { text-transform: uppercase; }
@@ -68,10 +68,10 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .nav-counter { font-size: 11px; min-width: 20px; height: 20px; background: #c3e3f8; color: #2b638a; border-radius: 8px; text-align: center; padding: 2px 5px; }
 .sidebar-bottom { margin-top: auto; }
 .sidebar-tip { border: 1.5px dashed #b8d6e9; background: #ebf6ff; color: #456e8e; padding: 18px 15px 14px; border-radius: 17px; margin-bottom: 12px; }
-.sidebar-tip strong { display: block; margin: 5px 0; font-family: Fredoka,sans-serif; font-weight: 500; }
+.sidebar-tip strong { display: block; margin: 5px 0; font-family: "Bricolage Grotesque",sans-serif; font-weight: 500; }
 .sidebar-tip p { margin-bottom: 0; font-size: 12px; line-height: 1.6; }
 [data-theme="dark"] .sidebar-tip { background: #28465c; color: #d7edfa; border-color: #527b96; }
-.tiny-star { display: inline-flex; }
+
 .sidebar-lock { border: 0; width: 100%; background: none; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 9px; padding: 12px; font-size: 12px; font-weight: 700; }
 .sidebar-lock:hover { color: var(--ink); }
 .main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -141,7 +141,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .note--slate { background: #bdcedd; }
 .note--night { background: #365c7a; color: #f4fbff; border-color: #244b69; }
 .note-pin { display: flex; align-items: center; justify-content: center; align-self: flex-end; color: inherit; width: 27px; height: 24px; opacity: .8; }
-.note-text { flex: 1; display: block; font-family: Fredoka,sans-serif; font-weight: 400; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; margin-top: -5px; }
+.note-text { flex: 1; display: block; font-family: "Bricolage Grotesque",sans-serif; font-weight: 400; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; margin-top: -5px; }
 .note-end { display: flex; align-items: center; justify-content: space-between; opacity: .7; font-size: 10px; font-weight: 700; padding-top: 10px; }
 .notes-grid--full .sticky-note { min-height: 210px; padding: 20px; }
 .notes-grid--full .note-text { font-size: 17px; }
@@ -163,7 +163,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .subtle-button { margin-top: 13px; border: 1px dashed var(--line); border-radius: 11px; width: 100%; color: var(--accent-strong); background: transparent; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; font-size: 12px; font-weight: 800; }
 .subtle-button:hover { background: var(--surface-soft); }
 .calendar-controls { display: flex; align-items: center; justify-content: space-between; margin: 3px 0 15px; }
-.calendar-controls > strong { font-family: Fredoka,sans-serif; font-weight: 500; font-size: 17px; }
+.calendar-controls > strong { font-family: "Bricolage Grotesque",sans-serif; font-weight: 500; font-size: 17px; }
 .calendar-controls > div { display: flex; gap: 1px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 6px; }
 .calendar-weekday { color: var(--muted); text-align: center; font-size: 10px; font-weight: 800; padding: 5px 0; }
@@ -199,7 +199,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .quest-intro h2 { margin: 7px 0 5px; font-size: 25px; }
 .quest-intro p { margin: 0 0 15px; color: #5681a0; font-size: 12px; }
 .quest-intro > div:first-child { width: min(100%,530px); }
-.quest-intro-star { color: #5b9bcb; padding: 12px 23px; transform: rotate(-10deg); }
+.quest-intro-badge { color: #5b9bcb; padding: 12px 23px; transform: rotate(-10deg); }
 .progress-track { height: 10px; border-radius: 20px; background: rgba(111,164,202,.24); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: inherit; background: #5ca2d4; transition: width .25s; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 17px; margin-bottom: 13px; border-bottom: 1px solid var(--line); }
@@ -220,28 +220,28 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .savings-summary { background: #d5eafb; color: #2e5f83; padding: 20px 26px; border-radius: 18px; display: flex; align-items: center; gap: 18px; border: 1px solid #afcfe8; margin-bottom: 22px; }
 .savings-summary > div:nth-child(2) { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .savings-summary span { font-size: 10px; font-weight: 800; letter-spacing: .1em; }
-.savings-summary strong { font-family: Fredoka,sans-serif; font-weight: 500; font-size: 28px; }
-.savings-summary-stars { display: flex; opacity: .5; }
+.savings-summary strong { font-family: "Bricolage Grotesque",sans-serif; font-weight: 500; font-size: 28px; }
+
 .jar-grid, .wishlist-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(242px,1fr)); gap: 19px; }
 .jar-card,.wish-card { background: var(--surface); border: 1px solid var(--line); border-radius: 19px; box-shadow: var(--shadow); overflow: hidden; }
 .jar-card { padding: 17px 20px 21px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .jar-card-top { width: 100%; display: flex; justify-content: space-between; align-items: center; }
 .jar-card .jar-drawing { margin: 8px 0 0; }
 .jar-card h3 { margin: 8px 0 8px; font-size: 21px; }
-.jar-balance { font-family: Fredoka,sans-serif; font-size: 24px; font-weight: 500; }
+.jar-balance { font-family: "Bricolage Grotesque",sans-serif; font-size: 24px; font-weight: 500; }
 .jar-card p { margin: 3px 0 16px; font-size: 12px; color: var(--muted); }
 .jar-card .progress-track { width: 100%; }
 .progress-caption { color: var(--muted); font-size: 11px; margin: 9px 0 17px; }
 .jar-buttons { display: flex; width: 100%; gap: 7px; }
 .jar-buttons .btn { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
 .empty-add-card { background: var(--surface-soft); min-height: 330px; border: 2px dashed #adcede; border-radius: 19px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 13px; color: #5e96bc; }
-.empty-add-card strong { font-family: Fredoka,sans-serif; font-weight: 500; font-size: 20px; }
+.empty-add-card strong { font-family: "Bricolage Grotesque",sans-serif; font-weight: 500; font-size: 20px; }
 .empty-add-card span { font-size: 12px; }
 .empty-add-card:hover { background: #e2f1fd; }
 .wish-card { display: flex; flex-direction: column; }
 .wish-illustration { height: 165px; display: grid; place-items: center; background: linear-gradient(145deg,#c4e3fa,#e5f3fc); color: #5c98c1; position: relative; }
 .wish-illustration > .icon { stroke-width: 1.3; transform: rotate(-11deg); filter: drop-shadow(5px 8px 0 rgba(34,95,134,.12)); }
-.wish-spark { position: absolute; top: 19px; right: 25px; transform: rotate(12deg); }
+
 .wish-tag { position: absolute; bottom: 11px; left: 15px; border: 1px solid #a2cce7; border-radius: 8px; padding: 6px 9px; background: #fff; color: #49799b; font-size: 10px; font-weight: 800; }
 .wish-body { padding: 17px; display: flex; flex-direction: column; flex: 1; }
 .wish-title-row { display: flex; align-items: start; justify-content: space-between; gap: 6px; }
@@ -255,7 +255,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 /* Income and expense tracking */
 .finance-top { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(250px,.65fr); gap: 18px; margin-bottom: 20px; }
 .finance-hero { background: linear-gradient(110deg,#c0def5,#dff1fc); border: 1px solid #a3cae7; border-radius: 19px; padding: 27px 27px 24px; position: relative; overflow: hidden; color: #274f6d; }
-.finance-hero strong { display: block; font-family: Fredoka,sans-serif; font-size: clamp(29px,4vw,44px); font-weight: 500; margin: 12px 0 4px; position: relative; z-index: 1; overflow-wrap: anywhere; }
+.finance-hero strong { display: block; font-family: "Bricolage Grotesque",sans-serif; font-size: clamp(29px,4vw,44px); font-weight: 500; margin: 12px 0 4px; position: relative; z-index: 1; overflow-wrap: anywhere; }
 .finance-hero p { font-size: 12px; margin: 0 0 20px; position: relative; z-index: 1; color: #4a7799; }
 .finance-plus { padding: 0 7px; }
 .finance-hero .btn { position: relative; z-index: 1; }
@@ -263,7 +263,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .finance-metrics { display: grid; grid-template-rows: repeat(2,1fr); gap: 15px; }
 .finance-metric { display: flex; flex-direction: column; gap: 6px; padding: 19px; border: 1px solid var(--line); background: var(--surface); border-radius: 17px; box-shadow: var(--shadow); }
 .finance-metric > span { font-size: 11px; font-weight: 800; color: var(--muted); }
-.finance-metric strong { font-family: Fredoka,sans-serif; font-size: 24px; font-weight: 500; overflow-wrap: anywhere; }
+.finance-metric strong { font-family: "Bricolage Grotesque",sans-serif; font-size: 24px; font-weight: 500; overflow-wrap: anywhere; }
 .finance-metric small { color: var(--muted); font-size: 10px; }
 .finance-lower { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr); gap: 20px; align-items: start; }
 .expense-list { display: flex; flex-direction: column; gap: 8px; }
@@ -275,7 +275,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .expense-detail span { font-size: 10px; color: var(--muted); }
 .expense-amount { white-space: nowrap; font-size: 12px; }
 .spending-illustration { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 3px; padding: 18px; color: #6aabda; }
-.spending-illustration span { font-family: Fredoka,sans-serif; color: var(--ink); font-size: 24px; }
+.spending-illustration span { font-family: "Bricolage Grotesque",sans-serif; color: var(--ink); font-size: 24px; }
 .panel-paragraph { font-size: 12px; color: var(--muted); line-height: 1.65; margin: 15px 0 0; }
 
 /* Settings */
@@ -303,7 +303,7 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 /* Gate and first-time PIN setup */
 .gate-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0,1.05fr) minmax(400px,.95fr); background: var(--surface); }
 .gate-left { min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(155deg,#d6ecfb,#a6d2f2); color: #244f70; padding: clamp(25px,3.8vw,55px); overflow: hidden; }
-.gate-brand { display: flex; align-items: center; gap: 10px; font-family: Fredoka,sans-serif; font-size: 22px; }
+.gate-brand { display: flex; align-items: center; gap: 10px; font-family: "Bricolage Grotesque",sans-serif; font-size: 22px; }
 .gate-copy { padding-top: 48px; }
 .gate-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .15em; }
 .gate-copy h1 { font-size: clamp(39px,4.3vw,65px); margin: 16px 0; line-height: 1.08; }
@@ -467,3 +467,22 @@ h1, h2, h3, .brand-name, .stat-card strong, .snapshot-money { font-family: "Fred
 .sticky-note.dragging { opacity: .45; }
 .sticky-note.note-drag-over { outline: 3px dashed #3b82b4; outline-offset: 3px; }
 .brand-name { font-size: 18px; overflow-wrap: anywhere; white-space: normal; }
+
+/* Printed-cartoon texture: coarse paper grain on art, without obscuring UI text. */
+.hero-art, .gate-art, .jar-drawing {
+    filter: drop-shadow(2px 4px 0 rgba(41, 88, 128, .09));
+}
+.wish-illustration::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("assets/grain.svg") repeat;
+    background-size: 140px 140px;
+    mix-blend-mode: multiply;
+    opacity: .5;
+    pointer-events: none;
+}
+[data-theme="dark"] .wish-illustration::after {
+    mix-blend-mode: screen;
+    opacity: .25;
+}

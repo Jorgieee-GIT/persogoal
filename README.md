@@ -1,6 +1,6 @@
-# Little Blue HQ
+# PersoGoal
 
-An initial version of your **personal, local-first task and life dashboard**, drawn in soft blues, gray, navy, and white with textured cartoon SVG artwork.
+An initial version of your **personal, local-first task and life dashboard**, drawn in soft blues, gray, navy, and white with visibly rough, grain-textured cartoon SVG artwork.
 
 **No backend. No database. No React/npm/build step required.** The project is plain HTML, CSS, and JavaScript to make it as easy as possible to deploy directly to GitHub Pages. It is completely editable on the website itself, with no admin or client panel.
 
@@ -22,19 +22,19 @@ An initial version of your **personal, local-first task and life dashboard**, dr
 
 ## Start it locally
 
-Unzip. From the folder containing `index.html`, run:
+Unzip. From the folder containing `index.html`, run (requires Node.js):
 
 ```bash
-python -m http.server 8000
+npx serve . -l 8000
 ```
 
-Open <http://localhost:8000> in your browser. On Windows, the command may be `py -m http.server 8000`. You can also use VS Code Live Server.
+Open <http://localhost:8000> in your browser. You can also use VS Code Live Server (right-click `index.html` and choose **Open with Live Server**). There is no need to install Python or run a frontend build.
 
 For the full cryptographic PIN system, use **localhost or HTTPS**, not a random insecure `http://` address. Avoid opening `index.html` directly from a `file://` URL: browser storage rules can vary.
 
 ## Publish on GitHub Pages
 
-1. Create a GitHub repository, e.g. `little-blue-hq`.
+1. Create a GitHub repository, e.g. `persogoal`.
 2. Upload the **contents** of this folder directly to the repository root (`index.html`, `app.js`, `styles.css`, `assets/`, etc.). Do not upload the parent folder as an extra directory level.
 3. Open your repository's **Settings > Pages**.
 4. Under **Build and deployment**, select **Deploy from a branch**, choose `main` and `/ (root)`, then Save.
@@ -52,7 +52,7 @@ No `npm install`, `.env`, Firebase, Neon, Render, Vercel, or API keys are needed
 - The app locks when `visibilitychange` reports hidden, because phones do not always send reliable app-close signals. On some devices the operating-system recent-app preview may still display a previously captured frame.
 - Reminder notifications are **not reliable if your tab is hidden, locked, or your browser/phone is closed**. This app has no background push server. Consider adding deadlines to a device calendar for closed-app reminders.
 - Salary and allowance are **manual monthly estimates**, not a bank integration. Savings jar balances are tracked separately from expense totals.
-- Fonts load from Google Fonts when online and fall back to system fonts when offline. No personal workspace data is sent to Google Fonts.
+- The new typography uses Google Fonts: Bricolage Grotesque for headings and Plus Jakarta Sans for UI/body text. Fonts load from Google Fonts when online and fall back to system fonts when offline. No personal workspace data is sent to Google Fonts.
 - This project does not include device sync, online accounts, scheduled server notifications, or a traditional multi-user authentication backend.
 
 ## Project files
@@ -72,3 +72,13 @@ README.md
 ## Further enhancements you could add
 
 A quest XP/achievement system, wishlist images, a jar-to-wishlist savings link, finance charts, multiple finance months, a focus timer, better mobile sticky-note sorting, PWA install support, and customizable dashboard widget positions.
+
+## November 2026 visual update
+
+- Rebranded the website title and default workspace name to **PersoGoal**.
+- Existing workspaces using the original default name are upgraded after PIN unlock. Custom names remain unchanged.
+- More visible printed/rough-grain textures on SVG illustrations, savings jars, illustrated wishlist cards, and textured panels.
+- Removed decorative star/sparkle glyphs preceding copy and replaced the quest badge with a check icon.
+- Updated footer to **© [current year] HORHE PERSONAL. All rights reserved.**
+- Uses the Google Fonts **Bricolage Grotesque** (titles) and **Plus Jakarta Sans** (interface).
+- **Data compatibility:** `little-blue-hq.v1.encrypted` remains the exact LocalStorage key to preserve existing saved progress, encrypted backups and PINs. Do not rename or delete it.
