@@ -82,3 +82,17 @@ A quest XP/achievement system, wishlist images, a jar-to-wishlist savings link, 
 - Updated footer to **© [current year] HORHE PERSONAL. All rights reserved.**
 - Uses the Google Fonts **Bricolage Grotesque** (titles) and **Plus Jakarta Sans** (interface).
 - **Data compatibility:** `little-blue-hq.v1.encrypted` remains the exact LocalStorage key to preserve existing saved progress, encrypted backups and PINs. Do not rename or delete it.
+
+## QR backup transfer (v1.4)
+
+You can manually move an encrypted backup between a desktop and a phone without a server.
+
+1. Open PersoGoal on the **desktop**, unlock with your existing PIN, and click the **scan/QR icon** beside **Quick add**.
+2. Keep the displayed QR code visible. Larger workspaces rotate through multiple QR frames automatically.
+3. On your **phone**, open your deployed PersoGoal page. Use **Scan QR backup from another device** on the PIN screen, or the scan/QR icon beside Quick add if already unlocked.
+4. Allow camera permission and aim the scanner at the code until all frames are collected.
+5. Enter the **source workspace's original PIN** and confirm replacement. Unlock using that original PIN.
+
+The backup is encrypted before QR generation and decoded on the receiving browser. Nothing is uploaded to a database. This action **replaces** the phone's existing local workspace and does **not** create live synchronization. Reverse the steps to transfer newer phone progress back to desktop, after backing up the desktop first.
+
+For very large workspaces, QR codes are not practical; use the existing encrypted JSON file export/import instead. Scan with a modern browser via **HTTPS** (GitHub Pages). The camera uses native browser QR detection where supported; otherwise the free, open-source jsQR library is fetched from a CDN when scanning starts. Photos are decoded within the browser. QR data remains PIN-encrypted, but a 4- or 6-digit PIN should not be considered high-security encryption against a determined offline attacker.

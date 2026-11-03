@@ -51,7 +51,8 @@ const PATHS = {
     edit: '<path d="M4 20l5-.8L20 8a2 2 0 0 0-4-4L5 15l-1 5z"/>',
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     money: '<rect x="2" y="5" width="20" height="14" rx="3"/><circle cx="12" cy="12" r="3"/><path d="M5 9h1m12 6h1"/>',
-    search: '<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>'
+    search: '<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>',
+    scan: '<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3M5 12h14"/>'
 };
 
 function icon(name, size = 19, cls = "") {
@@ -207,7 +208,11 @@ async function unlockWorkspace(pin) {
     checkReminders();
 }
 function lockWorkspace() {
-    if (!data) return;
+    if (!data) {
+        if (document.querySelector(".qr-modal")) closeModal();
+        return;
+    }
+    stopQrTransfer();
     document.getElementById("toast-root").innerHTML = "";
     data = null;
     activeKey = null;
@@ -268,7 +273,7 @@ function render() {
     } else {
         document.body.dataset.theme = data.profile.theme === "dark" ? "dark" : "light";
         root.innerHTML = `<div class="app-shell">${navMarkup()}${menuOpen ? '<button class="sidebar-backdrop" data-action="close-menu" aria-label="Close navigation"></button>' : ""}<main class="main-area">
-            <header class="topbar"><div class="topbar-left"><button class="icon-button menu-button" data-action="menu" aria-label="Open menu">${icon("menu",23)}</button><span class="breadcrumb">MY SPACE <span>/</span> <strong>${esc(labelPage())}</strong></span></div><div class="topbar-actions"><span class="today-chip">${icon("calendar",16)} ${new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span><button class="icon-button" data-action="lock" title="Lock now" aria-label="Lock now">${icon("lock",19)}</button><button class="btn btn-primary btn-small" data-action="quick-add">${icon("plus",18)}<span>Quick add</span></button></div></header>
+            <header class="topbar"><div class="topbar-left"><button class="icon-button menu-button" data-action="menu" aria-label="Open menu">${icon("menu",23)}</button><span class="breadcrumb">MY SPACE <span>/</span> <strong>${esc(labelPage())}</strong></span></div><div class="topbar-actions"><span class="today-chip">${icon("calendar",16)} ${new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span><button class="icon-button" data-action="lock" title="Lock now" aria-label="Lock now">${icon("lock",19)}</button><button class="icon-button qr-toolbar" type="button" data-action="qr-transfer" title="QR backup transfer" aria-label="QR backup transfer">${icon("scan",21)}</button><button class="btn btn-primary btn-small" data-action="quick-add">${icon("plus",18)}<span>Quick add</span></button></div></header>
             <div class="main-content">${renderPage()}</div>
             <footer class="site-footer">© ${new Date().getFullYear()} HORHE PERSONAL. <span>All rights reserved.</span></footer>
         </main></div>`;
@@ -276,14 +281,14 @@ function render() {
 }
 function renderGate(mode) {
     const setup = mode === "setup";
-    return `<div class="gate-shell"><div class="gate-left grain"><div class="gate-brand">${icon("sticky",25)} PersoGoal.</div><div class="gate-copy"><h1>Your plans deserve<br><em>a happy place.</em></h1><img class="gate-art" src="assets/desk-scene.svg" alt="Cartoon notebook, cloud, sticky note, and cup" /></div></div>
-        <div class="gate-right"><div class="gate-card"><div class="gate-card-icon">${icon("lock",27)}</div><h2>${setup ? "Let's make it yours." : "Your desk is waiting."}</h2>
+    return `<div class="gate-shell"><div class="gate-left grain"><div class="gate-brand">${icon("sticky",25)} PersoGoal.</div><div class="gate-copy"><h1>Horhe's personal<br><em>task tracker.</em></h1><img class="gate-art" src="assets/desk-scene.svg" alt="Cartoon notebook, cloud, sticky note, and cup" /></div></div>
+        <div class="gate-right"><div class="gate-card"><div class="gate-card-icon">${icon("lock",27)}</div><h2>${setup ? "Let's make it yours." : "Luh, ano pass mo?"}</h2>
             <form id="gate-form" data-form="${setup?"setup":"unlock"}" autocomplete="off">
                 ${setup ? `<label class="field-label">PIN length</label><div class="segmented"><button type="button" data-action="pin-choice" data-value="4" class="segment ${pinLengthChoice===4?"selected":""}">4 digits</button><button type="button" data-action="pin-choice" data-value="6" class="segment ${pinLengthChoice===6?"selected":""}">6 digits</button></div>`:""}
                 <label class="field-label" for="pin-field">${setup ? "Create your PIN" : "Enter your PIN"}</label><input id="pin-field" class="input pin-input" type="password" name="pin" inputmode="numeric" pattern="[0-9]{${setup ? pinLengthChoice : vault.pinLength}}" maxlength="${setup ? pinLengthChoice : vault.pinLength}" minlength="${setup ? pinLengthChoice : vault.pinLength}" placeholder="${"●".repeat(setup ? pinLengthChoice : vault.pinLength)}" required autocomplete="off" />
                 ${setup ? `<label class="field-label" for="pin-confirm">Confirm your PIN</label><input id="pin-confirm" class="input pin-input" type="password" name="confirm" inputmode="numeric" maxlength="${pinLengthChoice}" minlength="${pinLengthChoice}" pattern="[0-9]{${pinLengthChoice}}" placeholder="Enter the same PIN" required autocomplete="off" />`:""}
                 <div id="gate-error" class="form-error" role="alert"></div><button class="btn btn-primary btn-full gate-submit" type="submit">${icon(setup ? "lock" : "unlock",19)}${setup ? "Create my workspace" : "Unlock workspace"}${icon("arrow",18)}</button>
-            </form>
+            </form><button class="gate-scan-link" type="button" data-action="qr-scan">${icon("scan",17)} Scan QR backup from another device</button>
         </div></div></div>`;
 }
 function renderPage() {
@@ -428,7 +433,7 @@ function modalMarkup(title, description, inner, className="") {
     document.getElementById("modal-root").innerHTML = `<div class="modal-overlay" data-action="close-modal"><div class="modal ${className}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-top"><div><h2>${esc(title)}</h2>${description && (description.startsWith("This will") || description.startsWith("All notes") || description.startsWith("This action") || description.startsWith("Current balance:")) ? `<p class="modal-critical-note">${esc(description)}</p>` : ""}</div><button type="button" class="icon-button" data-action="close-modal" aria-label="Close">${icon("close",21)}</button></div>${inner}</div></div>`;
     document.querySelector(".modal input:not([type='hidden']),.modal textarea,.modal select,.modal button[data-autofocus]")?.focus({preventScroll:true});
 }
-function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+function closeModal() { stopQrTransfer(); document.getElementById("modal-root").innerHTML = ""; }
 function modalFooter(type, identity, label="Save changes", danger=false) {
     return `<div class="modal-bottom">${danger && identity ? `<button type="button" class="text-danger" data-action="delete-${type}" data-id="${identity}">${icon("trash",16)} Delete</button>`:"<span></span>"}<div class="modal-bottom-right"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-primary">${label}</button></div></div>`;
 }
@@ -565,6 +570,21 @@ async function handleForm(event) {
             localStorage.setItem(STORAGE_KEY,JSON.stringify(replacement));
             vault=replacement;
             closeModal(); lockWorkspace(); toast("PIN changed. Unlock using your new PIN."); return;
+        } else if (kind === "qr-import") {
+            if (!qrPendingPayload) throw Error("Scan a backup QR code first.");
+            const recovered = await qrDecodeSnapshot(qrPendingPayload, get("qrPin"));
+            await saveChain;
+            const encrypted = await encryptData(recovered.decoded, recovered.key);
+            const imported = {version:1, pinLength:recovered.pinLength, salt:recovered.salt, ...encrypted};
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+            vault = imported;
+            data = null;
+            activeKey = null;
+            qrPendingPayload = null;
+            closeModal();
+            render();
+            toast("QR backup imported. Unlock using its original PIN.");
+            return;
         } else if (kind === "backup-import") {
             const file=values.get("file"), pin=get("backupPin");
             if (!file || !file.size || file.size>4000000) throw Error("Choose an encrypted JSON backup under 4 MB.");
@@ -613,6 +633,296 @@ async function exportBackup() {
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     toast("Encrypted backup exported. Keep your PIN safe.");
 }
+/* Local-only encrypted QR transfer. No remote transfer, storage, or account service. */
+const QR_FRAME_CHARS = 410;
+const QR_MAX_FRAMES = 32;
+let qrSourceFrames = [];
+let qrSourceIndex = 0;
+let qrSourceTimer = null;
+let qrCameraStream = null;
+let qrCameraTimer = null;
+let qrCameraDetector = null;
+let qrReadingFrame = false;
+let qrIncoming = null;
+let qrPendingPayload = null;
+let qrScanCanvas = null;
+let jsQrLoader = null;
+
+function qrPhoneLayout() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (window.matchMedia("(pointer: coarse) and (max-width: 850px)").matches);
+}
+
+function stopQrTransfer() {
+    if (qrSourceTimer !== null) {
+        clearInterval(qrSourceTimer);
+        qrSourceTimer = null;
+    }
+    if (qrCameraTimer !== null) {
+        clearInterval(qrCameraTimer);
+        qrCameraTimer = null;
+    }
+    if (qrCameraStream) {
+        qrCameraStream.getTracks().forEach(track => track.stop());
+        qrCameraStream = null;
+    }
+    qrCameraDetector = null;
+    qrReadingFrame = false;
+    qrScanCanvas = null;
+    qrIncoming = null;
+    qrSourceFrames = [];
+}
+
+function qrToBase64Url(bytes) {
+    return bytesToB64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function qrFromBase64Url(value) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(value) || value.length > 100000) {
+        throw Error("Invalid QR backup data.");
+    }
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    return b64ToBytes(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+}
+
+async function qrCompress(bytes) {
+    if (typeof CompressionStream === "undefined") return {bytes, compressed:false};
+    const writer = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    const zipped = new Uint8Array(await new Response(writer).arrayBuffer());
+    return zipped.length < bytes.length ? {bytes:zipped, compressed:true} : {bytes, compressed:false};
+}
+
+async function qrUncompress(bytes, compressed) {
+    if (!compressed) return bytes;
+    if (typeof DecompressionStream === "undefined") {
+        throw Error("Your browser cannot unpack this QR backup. Try updating your browser or importing a JSON backup.");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    const output = new Uint8Array(await new Response(stream).arrayBuffer());
+    if (output.length > 3000000) throw Error("QR backup is too large.");
+    return output;
+}
+
+async function qrDigest(value) {
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+    return Array.from(digest.slice(0, 8), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function qrRenderMatrix(text) {
+    if (typeof PersoQR !== "function") throw Error("QR generator unavailable. Reload the page.");
+    const matrix = PersoQR(text);
+    const dimension = matrix.length;
+    const border = 4;
+    let cells = "";
+    for (let y = 0; y < dimension; y++) {
+        for (let x = 0; x < dimension; x++) {
+            if (matrix[y][x]) cells += `<rect x="${x + border}" y="${y + border}" width="1" height="1"/>`;
+        }
+    }
+    return `<svg class="qr-code-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dimension + border * 2} ${dimension + border * 2}" role="img" aria-label="Encrypted backup QR code"><rect width="100%" height="100%" fill="#ffffff"/><g fill="#132d44">${cells}</g></svg>`;
+}
+
+async function qrPrepareSnapshot() {
+    await saveChain;
+    if (!data || !activeKey || !vault) throw Error("Unlock your workspace before exporting a QR backup.");
+    const saved = structuredClone(data);
+    const input = new TextEncoder().encode(JSON.stringify(saved));
+    const packed = await qrCompress(input);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv}, activeKey, packed.bytes));
+    const output = new Uint8Array(33 + ciphertext.length);
+    output[0] = 80;
+    output[1] = 71;
+    output[2] = 1;
+    output[3] = vault.pinLength;
+    output[4] = packed.compressed ? 1 : 0;
+    output.set(b64ToBytes(vault.salt), 5);
+    output.set(iv, 21);
+    output.set(ciphertext, 33);
+    return qrToBase64Url(output);
+}
+
+async function qrDecodeSnapshot(payload, pin) {
+    const bytes = qrFromBase64Url(payload);
+    if (bytes.length < 50 || bytes[0] !== 80 || bytes[1] !== 71 || bytes[2] !== 1) {
+        throw Error("This QR code does not contain a supported PersoGoal backup.");
+    }
+    const pinLength = bytes[3];
+    if (![4, 6].includes(pinLength) || pin.length !== pinLength || !/^\d+$/.test(pin)) {
+        throw Error(`Enter the original ${pinLength}-digit backup PIN.`);
+    }
+    if (![0, 1].includes(bytes[4])) throw Error("Unknown QR backup format.");
+    const salt = bytesToB64(bytes.slice(5, 21));
+    const iv = bytes.slice(21, 33);
+    const key = await deriveKey(pin, salt);
+    let plaintext;
+    try {
+        plaintext = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, bytes.slice(33)));
+    } catch {
+        throw Error("Incorrect PIN or damaged QR backup.");
+    }
+    const unpacked = await qrUncompress(plaintext, bytes[4] === 1);
+    const decoded = JSON.parse(new TextDecoder("utf-8", {fatal:true}).decode(unpacked));
+    if (!decoded || decoded.version !== 1 || !Array.isArray(decoded.notes) || !Array.isArray(decoded.tasks) ||
+        !Array.isArray(decoded.jars) || !Array.isArray(decoded.wishlist) || !decoded.finance || !decoded.profile) {
+        throw Error("QR backup doesn't contain a compatible PersoGoal workspace.");
+    }
+    return {decoded, key, salt, pinLength};
+}
+
+function qrShowPart(index) {
+    if (!qrSourceFrames.length) return;
+    qrSourceIndex = (index + qrSourceFrames.length) % qrSourceFrames.length;
+    const node = document.getElementById("qr-display");
+    if (!node) return;
+    node.innerHTML = qrRenderMatrix(qrSourceFrames[qrSourceIndex]);
+    const count = document.getElementById("qr-frame-count");
+    if (count) count.textContent = `Frame ${qrSourceIndex + 1} of ${qrSourceFrames.length}`;
+}
+
+async function qrShowBackup() {
+    if (!data) {
+        toast("Unlock this device before displaying its backup.", "error");
+        return;
+    }
+    closeModal();
+    modalMarkup("Show QR backup", "", `<div class="qr-transfer-box"><div id="qr-display" class="qr-display qr-loading">Preparing encrypted backup...</div><strong id="qr-frame-count" class="qr-frame-count"></strong><div class="qr-frame-controls"><button class="btn btn-outline" type="button" data-action="qr-prev">${icon("left", 17)} Previous</button><button class="btn btn-outline" type="button" data-action="qr-next">Next ${icon("right", 17)}</button></div><p class="qr-notice">Open PersoGoal on your phone, tap Scan backup, and point its camera at this code. Frames change automatically.</p><button class="btn btn-outline btn-full" type="button" data-action="qr-scan">${icon("scan", 17)} Scan another device</button></div>`, "qr-modal");
+    try {
+        const payload = await qrPrepareSnapshot();
+        if (!document.getElementById("qr-display")) return;
+        const checksum = await qrDigest(payload);
+        const transferId = qrToBase64Url(crypto.getRandomValues(new Uint8Array(6)));
+        const total = Math.ceil(payload.length / QR_FRAME_CHARS);
+        if (total > QR_MAX_FRAMES) {
+            document.getElementById("qr-display").innerHTML = "<p class='qr-too-large'>Your backup is too large for convenient QR transfer.</p>";
+            document.getElementById("qr-frame-count").textContent = "Use Settings → Export backup (JSON) instead.";
+            document.querySelector(".qr-frame-controls")?.remove();
+            return;
+        }
+        qrSourceFrames = Array.from({length:total}, (_, index) =>
+            `PGQR1|${transferId}|${index + 1}|${total}|${checksum}|${payload.slice(index * QR_FRAME_CHARS, (index + 1) * QR_FRAME_CHARS)}`
+        );
+        qrShowPart(0);
+        if (total > 1) qrSourceTimer = setInterval(() => qrShowPart(qrSourceIndex + 1), 2100);
+    } catch (error) {
+        const container = document.getElementById("qr-display");
+        if (container) container.textContent = error.message || "Unable to prepare the QR backup.";
+    }
+}
+
+function qrLoadJsDecoder() {
+    if (typeof jsQR === "function") return Promise.resolve();
+    if (jsQrLoader) return jsQrLoader;
+    jsQrLoader = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
+        script.onload = () => typeof jsQR === "function" ? resolve() : reject(Error("QR scanning library unavailable."));
+        script.onerror = () => reject(Error("Can't load QR scanner. Connect to the internet and retry."));
+        document.head.appendChild(script);
+    }).catch(error => {
+        jsQrLoader = null;
+        throw error;
+    });
+    return jsQrLoader;
+}
+
+async function qrCollectFrame(value) {
+    if (!value || !value.startsWith("PGQR1|")) return;
+    const parts = value.split("|");
+    if (parts.length !== 6 || !/^[A-Za-z0-9_-]{8}$/.test(parts[1]) ||
+        !/^\d{1,2}$/.test(parts[2]) || !/^\d{1,2}$/.test(parts[3]) ||
+        !/^[a-f0-9]{16}$/.test(parts[4])) return;
+    const index = Number(parts[2]);
+    const total = Number(parts[3]);
+    if (total < 1 || total > QR_MAX_FRAMES || index < 1 || index > total || parts[5].length > QR_FRAME_CHARS) return;
+    if (!qrIncoming || qrIncoming.id !== parts[1]) {
+        qrIncoming = {id:parts[1], total, checksum:parts[4], frames:new Map(), complete:false};
+    }
+    if (qrIncoming.complete || qrIncoming.total !== total || qrIncoming.checksum !== parts[4]) return;
+    qrIncoming.frames.set(index, parts[5]);
+    const count = document.getElementById("qr-scan-count");
+    if (count) count.textContent = `${qrIncoming.frames.size} of ${total} frames scanned`;
+    if (qrIncoming.frames.size !== total) return;
+    qrIncoming.complete = true;
+    const payload = Array.from({length:total}, (_, i) => qrIncoming.frames.get(i + 1) || "").join("");
+    if (await qrDigest(payload) !== qrIncoming.checksum) {
+        qrIncoming = null;
+        if (count) count.textContent = "Scan mismatch. Please try again.";
+        return;
+    }
+    qrPendingPayload = payload;
+    closeModal();
+    qrConfirmImport();
+}
+
+function qrConfirmImport() {
+    if (!qrPendingPayload) return;
+    modalMarkup("Import QR backup", "This will replace everything currently stored in this browser.", `<form data-form="qr-import"><label class="field-label" for="qr-import-pin">Original backup PIN</label><input id="qr-import-pin" class="input pin-input" type="password" name="qrPin" inputmode="numeric" maxlength="6" pattern="[0-9]{4}|[0-9]{6}" autocomplete="off" required/><div class="form-error" role="alert"></div><div class="modal-bottom"><button class="btn btn-outline" type="button" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit">Replace and import</button></div></form>`);
+}
+
+async function qrStartCamera() {
+    closeModal();
+    qrPendingPayload = null;
+    modalMarkup("Scan QR backup", "", `<div class="qr-transfer-box"><div class="qr-camera-wrap"><video id="qr-camera" playsinline muted autoplay></video><div class="qr-camera-corners" aria-hidden="true"></div></div><strong class="qr-frame-count" id="qr-scan-count">Point your camera at the desktop QR code</strong><p class="qr-notice">Keep this open while all frames are collected. Importing will ask for the backup PIN.</p><div class="qr-frame-controls"><button class="btn btn-outline" type="button" data-action="qr-show" ${data?"":"disabled"}>${icon("scan", 17)} Show my QR</button><button class="btn btn-outline" type="button" data-action="close-modal">Cancel</button></div></div>`, "qr-modal");
+    if (!navigator.mediaDevices?.getUserMedia) {
+        const count = document.getElementById("qr-scan-count");
+        if (count) count.textContent = "Camera access requires HTTPS or localhost and a compatible browser.";
+        return;
+    }
+    try {
+        let decoder;
+        if (typeof BarcodeDetector !== "undefined") {
+            try {
+                const formats = typeof BarcodeDetector.getSupportedFormats === "function"
+                    ? await BarcodeDetector.getSupportedFormats() : ["qr_code"];
+                if (formats.includes("qr_code")) decoder = new BarcodeDetector({formats:["qr_code"]});
+            } catch { decoder = null; }
+        }
+        if (!decoder) await qrLoadJsDecoder();
+        if (!document.getElementById("qr-camera")) return;
+        const stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}});
+        const video = document.getElementById("qr-camera");
+        if (!video) {stream.getTracks().forEach(track => track.stop());return;}
+        qrCameraStream = stream;
+        qrCameraDetector = decoder;
+        video.srcObject = stream;
+        await video.play();
+        qrScanCanvas = document.createElement("canvas");
+        qrIncoming = null;
+        qrCameraTimer = setInterval(async () => {
+            if (qrReadingFrame || !qrCameraStream || !video.videoWidth || !document.getElementById("qr-camera")) return;
+            qrReadingFrame = true;
+            try {
+                let value = "";
+                if (qrCameraDetector) {
+                    const results = await qrCameraDetector.detect(video);
+                    value = results.find(result => result.rawValue?.startsWith("PGQR1|"))?.rawValue || "";
+                } else {
+                    const width = 720;
+                    const height = Math.round(width * video.videoHeight / video.videoWidth);
+                    qrScanCanvas.width = width;
+                    qrScanCanvas.height = height;
+                    const context = qrScanCanvas.getContext("2d", {willReadFrequently:true});
+                    context.drawImage(video, 0, 0, width, height);
+                    const pixels = context.getImageData(0, 0, width, height);
+                    value = jsQR(pixels.data, width, height, {inversionAttempts:"dontInvert"})?.data || "";
+                }
+                if (value) await qrCollectFrame(value);
+            } catch { /* A missed camera frame is normal. */ }
+            finally { qrReadingFrame = false; }
+        }, 260);
+    } catch (error) {
+        stopQrTransfer();
+        const count = document.getElementById("qr-scan-count");
+        if (count) count.textContent = error.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access in your browser settings." : (error.message || "Couldn't start the camera.");
+    }
+}
+
+function qrOpenTransfer() {
+    if (qrPhoneLayout()) qrStartCamera();
+    else qrShowBackup();
+}
+
 function checkReminders() {
     if (!data || document.hidden) return;
     const now=new Date();
@@ -646,6 +956,11 @@ document.addEventListener("click", async event => {
         return;
     }
     if (action==="close-modal") {closeModal();return;}
+    if (action==="qr-scan") {await qrStartCamera();return;}
+    if (action==="qr-show") {await qrShowBackup();return;}
+    if (action==="qr-transfer") {qrOpenTransfer();return;}
+    if (action==="qr-next") {qrShowPart(qrSourceIndex + 1);return;}
+    if (action==="qr-prev") {qrShowPart(qrSourceIndex - 1);return;}
     if (!data) return;
     if (action==="lock") {lockWorkspace();return;}
     if (action==="menu") {menuOpen=!menuOpen;render();return;}
