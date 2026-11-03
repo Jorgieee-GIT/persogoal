@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="320" viewBox="0 0 470 320" fill="none" aria-label="Illustrated notebook and cozy blue desk objects">
+<defs>
+ <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".46" numOctaves="3" seed="6" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+ <clipPath id="paperClip"><rect x="145" y="68" width="192" height="192" rx="17" transform="rotate(-9 145 68)"/></clipPath>
+ <clipPath id="cupClip"><path d="M341 157h68l-10 87q-3 18-23 18-20 0-23-18z"/></clipPath>
+</defs>
+<ellipse cx="244" cy="276" rx="185" ry="24" fill="#587da3" opacity=".15"/>
+<path d="M65 129c-26 0-25-33-1-35 2-25 39-32 51-11 21-15 50 2 46 25 25 1 24 32-2 32H73" fill="#F8FCFF" stroke="#375B7A" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M84 113h8m21 0h8" stroke="#466D91" stroke-linecap="round" stroke-width="3.5"/><path d="M92 124q12 10 24 0" stroke="#466D91" stroke-linecap="round" stroke-width="3"/>
+<g transform="rotate(-9 145 68)"><rect x="145" y="68" width="192" height="192" rx="17" fill="#FDFEFF" stroke="#2D4F6C" stroke-width="4"/><rect x="156" y="82" width="166" height="164" rx="10" fill="#E8F4FF"/><path d="M174 118h124M174 146h124M174 174h124M174 202h124" stroke="#B5D4EC" stroke-width="2"/><g stroke="#4679A2" stroke-width="4" stroke-linecap="round"><path d="m173 105 5 5 9-11"/><path d="m173 135 5 5 9-11"/><path d="m173 163 5 5 9-11"/></g><path d="M198 106h87M198 135h68M198 164h79" stroke="#527DA4" stroke-width="5" stroke-linecap="round"/><path d="M148 94h-12m12 33h-12m12 33h-12m12 33h-12m12 33h-12" stroke="#2D4F6C" stroke-width="6" stroke-linecap="round"/></g>
+<g transform="rotate(15 104 200)"><rect x="61" y="155" width="88" height="92" rx="9" fill="#96C9EF" stroke="#2D4F6C" stroke-width="3.5"/><rect x="69" y="165" width="72" height="73" rx="4" fill="#C8E5FC"/><path d="M93 190l7-13 7 13 15 2-11 11 3 15-14-7-14 7 3-15-11-11z" fill="#fff" stroke="#4C7DA8" stroke-width="2.5"/></g>
+<path d="M341 157h68l-10 87q-3 18-23 18-20 0-23-18z" fill="#C3E5FB" stroke="#305877" stroke-width="4"/><g clip-path="url(#cupClip)"><rect x="339" y="197" width="73" height="70" fill="#7FBBE6"/><path d="M351 219q26-12 53 0" stroke="#B8DCF5" stroke-width="5"/></g><path d="M344 160h63" stroke="#527EA0" stroke-width="4"/><path d="M363 175h28" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M365 114l2-33" stroke="#315A7C" stroke-width="6" stroke-linecap="round"/><path d="M379 144l16-43" stroke="#315A7C" stroke-width="6" stroke-linecap="round"/>
+<path d="M395 72l3-10 5 10 10 4-10 4-5 11-3-11-10-4z" fill="#FFFFFF" stroke="#466D91" stroke-width="2.5"/>
+<path d="M93 48l3-8 4 8 8 3-8 3-4 9-3-9-8-3z" fill="#FFFFFF" stroke="#466D91" stroke-width="2.2"/>
+<path d="M304 29l3-8 4 8 8 3-8 3-4 9-3-9-8-3z" fill="#BDE1FA" stroke="#466D91" stroke-width="2.2"/>
+<g clip-path="url(#paperClip)"><rect x="125" y="45" width="225" height="240" filter="url(#paper)" opacity=".22"/></g>
+</svg>
